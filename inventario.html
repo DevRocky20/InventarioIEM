@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inventario · Manifiesto de stock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#EDEEE7;
+    --surface:#FFFFFF;
+    --ink:#1B231F;
+    --muted:#707A72;
+    --teal:#2E6E62;
+    --teal-ink:#1F4D44;
+    --red:#C84B3C;
+    --line:#D9DBD2;
+    --tag-bg:#F4E8D7;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* HEADER — stamp-style manifest header */
+  header{
+    padding:20px 18px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  header .top-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:0.02em;
+    margin:0;
+    text-transform:uppercase;
+  }
+  .subtitle{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:0.06em;
+    margin-top:4px;
+  }
+  .stamp{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    font-weight:600;
+    border:1.5px solid var(--teal);
+    color:var(--teal-ink);
+    border-radius:6px;
+    padding:5px 9px;
+    transform:rotate(-3deg);
+    white-space:nowrap;
+    letter-spacing:0.04em;
+  }
+  .stamp.alert{
+    border-color:var(--red);
+    color:var(--red);
+  }
+
+  /* TABS */
+  nav.tabs{
+    display:flex;
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+  }
+  nav.tabs button{
+    flex:1;
+    border:none;
+    background:none;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--muted);
+    padding:13px 0;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    transition:color .15s, border-color .15s;
+  }
+  nav.tabs button.active{
+    color:var(--teal-ink);
+    border-bottom-color:var(--teal);
+  }
+  nav.tabs button:focus-visible, button:focus-visible, input:focus-visible{
+    outline:2px solid var(--teal);
+    outline-offset:2px;
+  }
+
+  main{flex:1; padding:16px 16px 32px;}
+  section{display:none;}
+  section.active{display:block;}
+
+  /* SCAN VIEW */
+  .scan-frame{
+    position:relative;
+    width:100%;
+    aspect-ratio:1/1;
+    background:#0F1411;
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  #reader{width:100%;height:100%;}
+  #reader video{width:100% !important; height:100% !important; object-fit:cover;}
+  .corner{
+    position:absolute;
+    width:28px;height:28px;
+    border:3px solid var(--teal);
+    pointer-events:none;
+    z-index:2;
+  }
+  .corner.tl{top:18px;left:18px;border-right:none;border-bottom:none;border-radius:4px 0 0 0;}
+  .corner.tr{top:18px;right:18px;border-left:none;border-bottom:none;border-radius:0 4px 0 0;}
+  .corner.bl{bottom:18px;left:18px;border-right:none;border-top:none;border-radius:0 0 0 4px;}
+  .corner.br{bottom:18px;right:18px;border-left:none;border-top:none;border-radius:0 0 4px 0;}
+
+  .scan-status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    margin:10px 0 14px;
+  }
+  .manual-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .manual-row input{flex:1;}
+
+  input[type=text], input[type=number]{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--surface);
+    color:var(--ink);
+    width:100%;
+  }
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 4px;
+    font-weight:500;
+  }
+  .field{margin-bottom:12px;}
+
+  button.primary{
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:0.02em;
+    padding:11px 14px;
+    cursor:pointer;
+  }
+  button.primary:hover{background:var(--teal-ink);}
+  button.ghost{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink);
+    border-radius:8px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:11px 14px;
+    cursor:pointer;
+  }
+  button.danger{color:var(--red); border-color:var(--red);}
+
+  /* SCAN RESULT CARD */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-top:14px;
+  }
+  .card h3{
+    font-family:'Space Grotesk',sans-serif;
+    margin:0 0 2px;
+    font-size:17px;
+  }
+  .card .code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:0.05em;
+  }
+  .card .qty-now{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    margin:10px 0 14px;
+    color:var(--ink);
+  }
+  .qty-now b{font-size:20px;}
+  .move-row{display:flex; gap:8px; margin-bottom:10px;}
+  .move-row input{flex:0 0 90px; text-align:center; font-size:16px;}
+  .move-row .actions{flex:1; display:flex; gap:8px;}
+  .move-row .actions button{flex:1;}
+  button.alta{background:var(--teal); color:#fff; border:none;}
+  button.baja{background:var(--red); color:#fff; border:none;}
+  button.alta, button.baja{
+    border-radius:8px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    padding:11px 0;
+    cursor:pointer;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+
+  /* INVENTORY LIST — ledger style */
+  .search-row{margin-bottom:14px;}
+  .ledger-row{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    padding:12px 0;
+    border-bottom:1px dashed var(--line);
+    cursor:pointer;
+  }
+  .ledger-row:last-child{border-bottom:none;}
+  .ledger-main{flex:1; min-width:0;}
+  .ledger-name{
+    font-weight:600;
+    font-size:14px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .ledger-code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:0.04em;
+    margin-top:2px;
+  }
+  .ledger-qty{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:18px;
+    font-weight:600;
+    text-align:right;
+    min-width:46px;
+  }
+  .ledger-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    font-weight:600;
+    color:var(--red);
+    border:1.5px solid var(--red);
+    border-radius:5px;
+    padding:2px 5px;
+    transform:rotate(-3deg);
+    letter-spacing:0.03em;
+    white-space:nowrap;
+  }
+  .empty{
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    padding:40px 10px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  /* TOAST */
+  .toast{
+    position:fixed;
+    bottom:18px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--ink);
+    color:#fff;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    padding:10px 18px;
+    border-radius:8px;
+    opacity:0;
+    transition:opacity .2s, transform .2s;
+    z-index:50;
+    pointer-events:none;
+    max-width:90%;
+    text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .row-2{display:flex; gap:8px;}
+  .row-2 > *{flex:1;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="top-row">
+      <div>
+        <h1>Inventario</h1>
+        <div class="subtitle">Manifiesto de stock compartido</div>
+      </div>
+      <div id="summaryStamp" class="stamp">0 SKU</div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="scan">Escanear</button>
+    <button class="tab-btn" data-tab="inventory">Inventario</button>
+    <button class="tab-btn" data-tab="add">Agregar</button>
+  </nav>
+
+  <main>
+    <!-- SCAN -->
+    <section id="tab-scan" class="active">
+      <div class="scan-frame">
+        <div id="reader"></div>
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+      </div>
+      <div class="scan-status" id="scanStatus">Iniciando cámara…</div>
+
+      <div class="manual-row">
+        <input type="text" id="manualCode" placeholder="O escribe el código aquí" />
+        <button class="primary" id="manualLookupBtn">Buscar</button>
+      </div>
+
+      <div id="scanResult"></div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section id="tab-inventory">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Buscar por nombre o código…" />
+      </div>
+      <div id="inventoryList"></div>
+    </section>
+
+    <!-- ADD -->
+    <section id="tab-add">
+      <div class="field">
+        <label for="newCode">Código de barras</label>
+        <input type="text" id="newCode" placeholder="Escanea o escribe el código" />
+      </div>
+      <div class="field">
+        <label for="newName">Nombre del producto</label>
+        <input type="text" id="newName" placeholder="Ej. Gasas estériles 10x10" />
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="newQty">Cantidad inicial</label>
+          <input type="number" id="newQty" min="0" value="0" />
+        </div>
+        <div class="field">
+          <label for="newMin">Stock mínimo</label>
+          <input type="number" id="newMin" min="0" value="0" />
+        </div>
+      </div>
+      <button class="primary" id="saveNewBtn" style="width:100%;">Guardar producto</button>
+      <div id="addMsg" class="scan-status"></div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'inventory-data';
+let inventory = {}; // { code: { name, qty, minStock } }
+let scannerRunning = false;
+let html5QrCode;
+
+// ---------- STORAGE ----------
+async function loadInventory(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    inventory = res ? JSON.parse(res.value) : {};
+  }catch(e){
+    inventory = {};
+  }
+  renderSummary();
+  renderInventoryList();
+}
+
+async function saveInventory(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(inventory), true);
+  }catch(e){
+    showToast('No se pudo guardar. Intenta de nuevo.');
+  }
+}
+
+// ---------- TOAST ----------
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab === 'inventory'){
+      loadInventory();
+    }
+    if(btn.dataset.tab === 'scan' && !scannerRunning){
+      startScanner();
+    }
+  });
+});
+
+// ---------- SUMMARY STAMP ----------
+function renderSummary(){
+  const codes = Object.keys(inventory);
+  const lowStock = codes.filter(c => inventory[c].qty <= inventory[c].minStock);
+  const stamp = document.getElementById('summaryStamp');
+  if(lowStock.length > 0){
+    stamp.textContent = `${codes.length} SKU · ${lowStock.length} BAJO`;
+    stamp.classList.add('alert');
+  }else{
+    stamp.textContent = `${codes.length} SKU`;
+    stamp.classList.remove('alert');
+  }
+}
+
+// ---------- INVENTORY LIST ----------
+function renderInventoryList(){
+  const container = document.getElementById('inventoryList');
+  const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+  const codes = Object.keys(inventory).sort((a,b)=> inventory[a].name.localeCompare(inventory[b].name));
+  const filtered = codes.filter(c=>{
+    if(!query) return true;
+    return inventory[c].name.toLowerCase().includes(query) || c.toLowerCase().includes(query);
+  });
+
+  if(filtered.length === 0){
+    container.innerHTML = '<div class="empty">Sin productos todavía.<br>Escanea o agrega uno para empezar.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(code=>{
+    const p = inventory[code];
+    const low = p.qty <= p.minStock;
+    return `
+      <div class="ledger-row" data-code="${escapeHtml(code)}">
+        <div class="ledger-main">
+          <div class="ledger-name">${escapeHtml(p.name)}</div>
+          <div class="ledger-code">${escapeHtml(code)}${low ? ' <span class="ledger-tag">BAJO</span>' : ''}</div>
+        </div>
+        <div class="ledger-qty">${p.qty}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.ledger-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const code = row.dataset.code;
+      switchToTab('scan');
+      showProductCard(code);
+    });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', renderInventoryList);
+
+function switchToTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active', s.id==='tab-'+name));
+  if(name === 'scan' && !scannerRunning) startScanner();
+}
+
+// ---------- SCANNER ----------
+function startScanner(){
+  const statusEl = document.getElementById('scanStatus');
+  if(typeof Html5Qrcode === 'undefined'){
+    statusEl.textContent = 'No se pudo cargar el escáner. Usa el campo de código manual.';
+    return;
+  }
+  html5QrCode = new Html5Qrcode("reader");
+  const config = {
+    fps: 10,
+    qrbox: { width: 240, height: 160 },
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ]
+  };
+
+  Html5Qrcode.getCameras().then(cameras=>{
+    if(!cameras || cameras.length === 0){
+      statusEl.textContent = 'No se detectó cámara. Usa el campo de código manual.';
+      return;
+    }
+    const cameraId = cameras.find(c=>/back|rear|trasera/i.test(c.label))?.id || cameras[cameras.length-1].id;
+    html5QrCode.start(
+      cameraId,
+      config,
+      (decodedText)=>{
+        if(navigator.vibrate) navigator.vibrate(80);
+        statusEl.textContent = 'Código detectado ✓';
+        handleScannedCode(decodedText.trim());
+      },
+      ()=>{ /* ignore per-frame errors */ }
+    ).then(()=>{
+      scannerRunning = true;
+      statusEl.textContent = 'Apunta la cámara al código de barras';
+    }).catch(()=>{
+      statusEl.textContent = 'No se pudo iniciar la cámara. Usa el campo de código manual.';
+    });
+  }).catch(()=>{
+    statusEl.textContent = 'Acceso a cámara no disponible aquí. Usa el campo de código manual o abre este archivo en tu navegador.';
+  });
+}
+
+// ---------- LOOKUP / SCAN RESULT ----------
+async function handleScannedCode(code){
+  await loadInventory();
+  showProductCard(code);
+}
+
+document.getElementById('manualLookupBtn').addEventListener('click', async ()=>{
+  const code = document.getElementById('manualCode').value.trim();
+  if(!code) return;
+  await loadInventory();
+  showProductCard(code);
+});
+
+function showProductCard(code){
+  const container = document.getElementById('scanResult');
+  const p = inventory[code];
+
+  if(!p){
+    container.innerHTML = `
+      <div class="card">
+        <h3>Producto no encontrado</h3>
+        <div class="code">${escapeHtml(code)}</div>
+        <div class="qty-now">Este código no está registrado todavía.</div>
+        <button class="primary" id="goAddBtn" style="width:100%;">Registrar producto nuevo</button>
+      </div>
+    `;
+    document.getElementById('goAddBtn').addEventListener('click', ()=>{
+      document.getElementById('newCode').value = code;
+      switchToTab('add');
+    });
+    return;
+  }
+
+  const low = p.qty <= p.minStock;
+  container.innerHTML = `
+    <div class="card">
+      <h3>${escapeHtml(p.name)}</h3>
+      <div class="code">${escapeHtml(code)}${low ? ' <span class="ledger-tag">BAJO</span>' : ''}</div>
+      <div class="qty-now">Stock actual: <b>${p.qty}</b> &nbsp;·&nbsp; Mínimo: ${p.minStock}</div>
+      <div class="move-row">
+        <input type="number" id="moveQty" min="1" value="1" />
+        <div class="actions">
+          <button class="alta" id="altaBtn">+ Alta</button>
+          <button class="baja" id="bajaBtn">− Baja</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('altaBtn').addEventListener('click', ()=> applyMovement(code, 1));
+  document.getElementById('bajaBtn').addEventListener('click', ()=> applyMovement(code, -1));
+}
+
+async function applyMovement(code, sign){
+  const qtyInput = document.getElementById('moveQty');
+  let amount = parseInt(qtyInput.value, 10);
+  if(isNaN(amount) || amount <= 0){
+    showToast('Ingresa una cantidad válida');
+    return;
+  }
+  await loadInventory();
+  if(!inventory[code]){
+    showToast('Este producto ya no existe en el inventario');
+    return;
+  }
+  const newQty = inventory[code].qty + (sign * amount);
+  inventory[code].qty = Math.max(0, newQty);
+  await saveInventory();
+  renderSummary();
+  showToast(sign > 0 ? `+${amount} ${inventory[code].name}` : `-${amount} ${inventory[code].name}`);
+  showProductCard(code);
+}
+
+// ---------- ADD PRODUCT ----------
+document.getElementById('saveNewBtn').addEventListener('click', async ()=>{
+  const code = document.getElementById('newCode').value.trim();
+  const name = document.getElementById('newName').value.trim();
+  const qty = parseInt(document.getElementById('newQty').value, 10) || 0;
+  const minStock = parseInt(document.getElementById('newMin').value, 10) || 0;
+  const msg = document.getElementById('addMsg');
+
+  if(!code || !name){
+    msg.textContent = 'Completa el código y el nombre del producto.';
+    return;
+  }
+
+  await loadInventory();
+  if(inventory[code]){
+    msg.textContent = 'Ya existe un producto con este código. Edítalo desde Inventario.';
+    return;
+  }
+
+  inventory[code] = { name, qty, minStock };
+  await saveInventory();
+  renderSummary();
+  msg.textContent = `Guardado: ${name} (${qty} unidades)`;
+  showToast('Producto agregado');
+
+  document.getElementById('newCode').value = '';
+  document.getElementById('newName').value = '';
+  document.getElementById('newQty').value = '0';
+  document.getElementById('newMin').value = '0';
+});
+
+// ---------- UTIL ----------
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+
+// ---------- INIT ----------
+loadInventory();
+startScanner();
+</script>
+</body>
+</html>
