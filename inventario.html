@@ -3,40 +3,30 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Inventario · Manifiesto de stock</title>
+<title>Inventario · IEM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
-    --bg:#EDEEE7;
-    --surface:#FFFFFF;
-    --ink:#1B231F;
-    --muted:#707A72;
-    --teal:#2E6E62;
-    --teal-ink:#1F4D44;
-    --red:#C84B3C;
-    --amber:#B86A1A;
-    --line:#D9DBD2;
-    --radius:10px;
+    --bg:#EDEEE7;--surface:#FFF;--ink:#1B231F;--muted:#707A72;
+    --teal:#2E6E62;--teal-ink:#1F4D44;--red:#C84B3C;--amber:#B86A1A;
+    --line:#D9DBD2;--radius:10px;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
   .app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
-
   header{padding:20px 18px 14px;border-bottom:1px solid var(--line);}
   header .top-row{display:flex;justify-content:space-between;align-items:flex-start;}
   h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:0.02em;margin:0;text-transform:uppercase;}
   .subtitle{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.06em;margin-top:4px;}
   .stamp{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;border:1.5px solid var(--teal);color:var(--teal-ink);border-radius:6px;padding:5px 9px;transform:rotate(-3deg);white-space:nowrap;letter-spacing:0.04em;}
   .stamp.alert{border-color:var(--red);color:var(--red);}
-
   nav.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--surface);}
   nav.tabs button{flex:1;border:none;background:none;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);padding:13px 0;cursor:pointer;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;}
   nav.tabs button.active{color:var(--teal-ink);border-bottom-color:var(--teal);}
   button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
-
   main{flex:1;padding:16px 16px 32px;}
   section{display:none;}
   section.active{display:block;}
@@ -50,58 +40,56 @@
   .corner.tr{top:18px;right:18px;border-left:none;border-bottom:none;border-radius:0 4px 0 0;}
   .corner.bl{bottom:18px;left:18px;border-right:none;border-top:none;border-radius:0 0 0 4px;}
   .corner.br{bottom:18px;right:18px;border-left:none;border-top:none;border-radius:0 0 4px 0;}
-
   .scan-status{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);text-align:center;margin:10px 0 14px;}
   .manual-row{display:flex;gap:8px;margin-bottom:16px;}
   .manual-row input{flex:1;}
 
   input[type=text],input[type=number],input[type=date]{font-family:'IBM Plex Mono',monospace;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;}
+  select{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;}
   label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:500;}
   .field{margin-bottom:12px;}
   .row-2{display:flex;gap:8px;}
-  .row-2 > *{flex:1;}
+  .row-2>*{flex:1;}
   .row-3{display:flex;gap:8px;}
-  .row-3 > *{flex:1;}
+  .row-3>*{flex:1;}
 
   button.primary{background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;letter-spacing:0.02em;padding:11px 14px;cursor:pointer;}
   button.primary:hover{background:var(--teal-ink);}
 
-  /* CARD */
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px;}
   .card h3{font-family:'Space Grotesk',sans-serif;margin:0 0 2px;font-size:17px;}
-  .card .code{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:0.05em;}
-  .card .qty-now{font-family:'IBM Plex Mono',monospace;font-size:13px;margin:10px 0 10px;color:var(--ink);}
+  .card .code{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:0.05em;margin-bottom:8px;}
+  .qty-now{font-family:'IBM Plex Mono',monospace;font-size:13px;margin:8px 0 12px;color:var(--ink);}
   .qty-now b{font-size:20px;}
+  .divider{border:none;border-top:1px dashed var(--line);margin:12px 0;}
+  .section-title{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px;}
+  .section-title.verde{color:var(--teal-ink);}
+  .section-title.rojo{color:var(--red);}
+  .section-title.gris{color:var(--muted);}
 
-  /* ALTA FORM dentro de card */
-  .alta-form{border-top:1px dashed var(--line);margin-top:12px;padding-top:12px;}
-  .alta-form h4{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 10px;color:var(--teal-ink);}
   button.alta{background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 0;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;width:100%;}
+  button.baja-btn{background:var(--red);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 0;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;width:100%;margin-top:8px;}
 
-  /* BAJA FORM */
-  .baja-section{border-top:1px dashed var(--line);margin-top:12px;padding-top:12px;}
-  .baja-section h4{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 10px;color:var(--red);}
-
-  /* LOTES TABLE */
-  .lotes-section{border-top:1px dashed var(--line);margin-top:12px;padding-top:12px;}
-  .lotes-section h4{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 10px;color:var(--muted);}
   .lote-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px dotted var(--line);}
   .lote-row:last-child{border-bottom:none;}
   .lote-info{flex:1;min-width:0;}
-  .lote-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--ink);}
+  .lote-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;}
   .lote-exp{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
   .lote-exp.proxima{color:var(--amber);font-weight:600;}
   .lote-exp.vencida{color:var(--red);font-weight:600;}
   .lote-qty{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;text-align:right;min-width:38px;}
-  .lote-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;border:1.5px solid;border-radius:5px;padding:2px 5px;letter-spacing:0.03em;white-space:nowrap;transform:rotate(-3deg);display:inline-block;}
-  .lote-tag.vencida{border-color:var(--red);color:var(--red);}
-  .lote-tag.proxima{border-color:var(--amber);color:var(--amber);}
+  .badge{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;border:1.5px solid;border-radius:5px;padding:2px 5px;letter-spacing:0.03em;white-space:nowrap;display:inline-block;}
+  .badge.rojo{border-color:var(--red);color:var(--red);}
+  .badge.amber{border-color:var(--amber);color:var(--amber);}
 
-  /* BAJA SELECT */
-  select{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;appearance:auto;}
-  button.baja-btn{background:var(--red);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 0;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;width:100%;margin-top:8px;}
+  /* SYNC BANNER */
+  .sync-bar{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+  .sync-bar .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;}
+  .sync-bar .sync-dot.pending{background:var(--amber);}
+  .sync-bar .sync-text{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);flex:1;}
+  .sync-bar button{font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;background:none;border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;white-space:nowrap;}
 
-  /* INVENTORY LIST */
+  /* INVENTORY */
   .search-row{margin-bottom:14px;}
   .ledger-row{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px dashed var(--line);cursor:pointer;}
   .ledger-row:last-child{border-bottom:none;}
@@ -110,11 +98,13 @@
   .ledger-code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.04em;margin-top:2px;}
   .ledger-right{text-align:right;}
   .ledger-qty{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;}
-  .ledger-warn{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;border:1.5px solid;border-radius:5px;padding:2px 5px;letter-spacing:0.03em;white-space:nowrap;display:inline-block;margin-top:3px;}
-  .ledger-warn.bajo{border-color:var(--red);color:var(--red);}
-  .ledger-warn.cad{border-color:var(--amber);color:var(--amber);}
-
+  .ledger-badges{margin-top:3px;}
   .empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 10px;font-family:'IBM Plex Mono',monospace;}
+
+  /* EXPORT */
+  .export-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px;}
+  .export-box textarea{width:100%;height:120px;font-family:'IBM Plex Mono',monospace;font-size:11px;border:1px solid var(--line);border-radius:8px;padding:8px;resize:none;background:#F8F8F5;}
+  .import-hint{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;}
 
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;padding:10px 18px;border-radius:8px;opacity:0;transition:opacity .2s,transform .2s;z-index:50;pointer-events:none;max-width:90%;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -125,8 +115,8 @@
   <header>
     <div class="top-row">
       <div>
-        <h1>Inventario</h1>
-        <div class="subtitle">Manifiesto de stock compartido</div>
+        <h1>Inventario IEM</h1>
+        <div class="subtitle">Control de stock por lote</div>
       </div>
       <div id="summaryStamp" class="stamp">0 SKU</div>
     </div>
@@ -136,6 +126,7 @@
     <button class="tab-btn active" data-tab="scan">Escanear</button>
     <button class="tab-btn" data-tab="inventory">Inventario</button>
     <button class="tab-btn" data-tab="add">Agregar</button>
+    <button class="tab-btn" data-tab="sync">Sincronizar</button>
   </nav>
 
   <main>
@@ -179,14 +170,33 @@
       <button class="primary" id="saveNewBtn" style="width:100%;">Guardar producto</button>
       <div id="addMsg" class="scan-status"></div>
     </section>
+
+    <!-- SYNC -->
+    <section id="tab-sync">
+      <p style="font-size:13px;color:var(--muted);font-family:'IBM Plex Mono',monospace;line-height:1.6;margin-top:0;">
+        Para compartir el inventario entre varios teléfonos, copia el código de exportación y pégalo en los demás dispositivos.
+      </p>
+
+      <div class="export-box">
+        <div class="section-title gris" style="margin-bottom:8px;">Exportar datos</div>
+        <textarea id="exportText" readonly placeholder="Aquí aparecerá el código…"></textarea>
+        <button class="primary" id="copyExportBtn" style="width:100%;margin-top:8px;">Copiar al portapapeles</button>
+      </div>
+
+      <div class="export-box" style="margin-top:14px;">
+        <div class="section-title gris" style="margin-bottom:8px;">Importar datos</div>
+        <textarea id="importText" placeholder="Pega aquí el código de otro dispositivo…"></textarea>
+        <div class="import-hint">⚠ Importar reemplaza TODO el inventario de este dispositivo.</div>
+        <button class="primary" id="importBtn" style="width:100%;margin-top:8px;background:var(--amber);">Importar y reemplazar</button>
+      </div>
+    </section>
   </main>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const STORAGE_KEY = 'inventory-data-v2';
-// inventory[code] = { name, minStock, lotes: [ {id, lote, caducidad, qty} ] }
+const LS_KEY = 'inventario-iem-v1';
 let inventory = {};
 let scannerRunning = false;
 let html5QrCode;
@@ -197,46 +207,42 @@ function escapeHtml(str){
 }
 function showToast(msg){
   const t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
+  t.textContent=msg;t.classList.add('show');
   clearTimeout(t._timer);
   t._timer=setTimeout(()=>t.classList.remove('show'),2400);
 }
-function totalQty(p){ return (p.lotes||[]).reduce((s,l)=>s+l.qty,0); }
-function today(){ return new Date().toISOString().slice(0,10); }
-function diasParaCaducar(fechaStr){
-  if(!fechaStr) return null;
-  const diff = new Date(fechaStr+' 00:00') - new Date(today()+' 00:00');
-  return Math.ceil(diff/(1000*60*60*24));
-}
+function totalQty(p){return(p.lotes||[]).reduce((s,l)=>s+l.qty,0);}
+function today(){return new Date().toISOString().slice(0,10);}
 function expStatus(fechaStr){
-  const d = diasParaCaducar(fechaStr);
-  if(d===null) return 'ok';
-  if(d<0) return 'vencida';
-  if(d<=30) return 'proxima';
+  if(!fechaStr) return 'ok';
+  const diff=new Date(fechaStr+' 00:00')-new Date(today()+' 00:00');
+  const dias=Math.ceil(diff/(1000*60*60*24));
+  if(dias<0) return 'vencida';
+  if(dias<=30) return 'proxima';
   return 'ok';
 }
 
-// ---- STORAGE ----
-async function loadInventory(){
+// ---- STORAGE (localStorage) ----
+function loadInventory(){
   try{
-    const res = await window.storage.get(STORAGE_KEY, true);
-    inventory = res ? JSON.parse(res.value) : {};
-  }catch(e){ inventory={}; }
+    const raw=localStorage.getItem(LS_KEY);
+    inventory=raw?JSON.parse(raw):{};
+  }catch(e){inventory={};}
   renderSummary();
   renderInventoryList();
 }
-async function saveInventory(){
-  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(inventory), true); }
-  catch(e){ showToast('Error al guardar. Intenta de nuevo.'); }
+function saveInventory(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(inventory));}
+  catch(e){showToast('Error al guardar.');}
 }
 
 // ---- SUMMARY ----
 function renderSummary(){
-  const codes = Object.keys(inventory);
-  const bajo = codes.filter(c => totalQty(inventory[c]) <= inventory[c].minStock);
-  const stamp = document.getElementById('summaryStamp');
-  stamp.textContent = bajo.length > 0 ? `${codes.length} SKU · ${bajo.length} BAJO` : `${codes.length} SKU`;
-  stamp.classList.toggle('alert', bajo.length>0);
+  const codes=Object.keys(inventory);
+  const bajo=codes.filter(c=>totalQty(inventory[c])<=inventory[c].minStock);
+  const stamp=document.getElementById('summaryStamp');
+  stamp.textContent=bajo.length>0?`${codes.length} SKU · ${bajo.length} BAJO`:`${codes.length} SKU`;
+  stamp.classList.toggle('alert',bajo.length>0);
 }
 
 // ---- TABS ----
@@ -246,21 +252,22 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-    if(btn.dataset.tab==='inventory') loadInventory();
-    if(btn.dataset.tab==='scan' && !scannerRunning) startScanner();
+    if(btn.dataset.tab==='inventory'){loadInventory();}
+    if(btn.dataset.tab==='scan'&&!scannerRunning){startScanner();}
+    if(btn.dataset.tab==='sync'){renderExport();}
   });
 });
 function switchToTab(name){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
   document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active',s.id==='tab-'+name));
-  if(name==='scan' && !scannerRunning) startScanner();
+  if(name==='scan'&&!scannerRunning) startScanner();
 }
 
 // ---- SCANNER ----
 function startScanner(){
-  const statusEl = document.getElementById('scanStatus');
-  if(typeof Html5Qrcode==='undefined'){ statusEl.textContent='Escáner no disponible. Usa el campo manual.'; return; }
-  html5QrCode = new Html5Qrcode("reader");
+  const statusEl=document.getElementById('scanStatus');
+  if(typeof Html5Qrcode==='undefined'){statusEl.textContent='Escáner no disponible. Usa el campo manual.';return;}
+  html5QrCode=new Html5Qrcode("reader");
   const config={fps:10,qrbox:{width:240,height:160},formatsToSupport:[
     Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,
     Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,
@@ -268,23 +275,23 @@ function startScanner(){
     Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.QR_CODE
   ]};
   Html5Qrcode.getCameras().then(cameras=>{
-    if(!cameras||cameras.length===0){ statusEl.textContent='No se detectó cámara. Usa el campo manual.'; return; }
-    const camId = cameras.find(c=>/back|rear|trasera/i.test(c.label))?.id || cameras[cameras.length-1].id;
+    if(!cameras||cameras.length===0){statusEl.textContent='No se detectó cámara. Usa el campo manual.';return;}
+    const camId=cameras.find(c=>/back|rear|trasera/i.test(c.label))?.id||cameras[cameras.length-1].id;
     html5QrCode.start(camId,config,(decoded)=>{
-      if(navigator.vibrate) navigator.vibrate(80);
+      if(navigator.vibrate)navigator.vibrate(80);
       statusEl.textContent='Código detectado ✓';
       handleScannedCode(decoded.trim());
-    },()=>{}).then(()=>{ scannerRunning=true; statusEl.textContent='Apunta la cámara al código de barras'; })
-    .catch(()=>{ statusEl.textContent='No se pudo iniciar la cámara. Usa el campo manual.'; });
-  }).catch(()=>{ statusEl.textContent='Acceso a cámara no disponible. Usa el campo manual.'; });
+    },()=>{}).then(()=>{scannerRunning=true;statusEl.textContent='Apunta la cámara al código de barras';})
+    .catch(()=>{statusEl.textContent='No se pudo iniciar la cámara. Usa el campo manual.';});
+  }).catch(()=>{statusEl.textContent='Acceso a cámara no disponible. Usa el campo manual.';});
 }
 
 // ---- SCAN RESULT ----
-async function handleScannedCode(code){ await loadInventory(); showProductCard(code); }
-document.getElementById('manualLookupBtn').addEventListener('click', async()=>{
+function handleScannedCode(code){loadInventory();showProductCard(code);}
+document.getElementById('manualLookupBtn').addEventListener('click',()=>{
   const code=document.getElementById('manualCode').value.trim();
-  if(!code) return;
-  await loadInventory(); showProductCard(code);
+  if(!code)return;
+  loadInventory();showProductCard(code);
 });
 
 function showProductCard(code){
@@ -295,127 +302,103 @@ function showProductCard(code){
       <div class="card">
         <h3>Producto no encontrado</h3>
         <div class="code">${escapeHtml(code)}</div>
-        <div class="qty-now">Este código no está registrado todavía.</div>
-        <button class="primary" id="goAddBtn" style="width:100%;">Registrar producto nuevo</button>
+        <div class="qty-now">Este código no está registrado.</div>
+        <button class="primary" id="goAddBtn" style="width:100%">Registrar producto nuevo</button>
       </div>`;
     document.getElementById('goAddBtn').addEventListener('click',()=>{
-      document.getElementById('newCode').value=code; switchToTab('add');
+      document.getElementById('newCode').value=code;switchToTab('add');
     });
     return;
   }
 
-  const total = totalQty(p);
-  const low = total <= p.minStock;
-  const lotes = p.lotes || [];
-
-  // Lotes activos para baja (qty > 0), ordenados por caducidad
-  const lotesActivos = lotes.filter(l=>l.qty>0).sort((a,b)=>{
-    if(!a.caducidad && !b.caducidad) return 0;
-    if(!a.caducidad) return 1;
-    if(!b.caducidad) return -1;
+  const total=totalQty(p);
+  const low=total<=p.minStock;
+  const lotes=p.lotes||[];
+  const lotesActivos=lotes.filter(l=>l.qty>0).sort((a,b)=>{
+    if(!a.caducidad&&!b.caducidad)return 0;
+    if(!a.caducidad)return 1;
+    if(!b.caducidad)return -1;
     return a.caducidad.localeCompare(b.caducidad);
   });
 
-  const lotesHTML = lotes.length===0
-    ? '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--muted)">Sin lotes registrados</div>'
-    : lotes.map(l=>{
-        const st = expStatus(l.caducidad);
-        const expLabel = l.caducidad
-          ? (st==='vencida' ? `VENCIDA ${l.caducidad}` : st==='proxima' ? `CAD PRÓX ${l.caducidad}` : `CAD ${l.caducidad}`)
-          : 'Sin fecha';
+  const lotesHTML=lotes.length===0
+    ?'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--muted)">Sin lotes aún. Da una alta para agregar.</div>'
+    :lotes.map(l=>{
+        const st=expStatus(l.caducidad);
+        const expTxt=l.caducidad?(st==='vencida'?`VENCIDA · ${l.caducidad}`:st==='proxima'?`PRÓX · ${l.caducidad}`:`CAD · ${l.caducidad}`):'Sin fecha';
         return `<div class="lote-row">
           <div class="lote-info">
             <div class="lote-num">Lote ${escapeHtml(l.lote)}</div>
-            <div class="lote-exp ${st}">${expLabel}${st!=='ok'&&st!=='' ? ' <span class="lote-tag '+st+'">'+(st==='vencida'?'VENCIDA':'PRÓXIMA')+'</span>':''}</div>
+            <div class="lote-exp ${st}">${expTxt}${st!=='ok'?` <span class="badge ${st==='vencida'?'rojo':'amber'}">${st==='vencida'?'VENCIDA':'PRÓXIMA'}</span>`:''}</div>
           </div>
           <div class="lote-qty">${l.qty}</div>
         </div>`;
       }).join('');
 
-  const bajaOptions = lotesActivos.map(l=>
-    `<option value="${escapeHtml(l.id)}">Lote ${escapeHtml(l.lote)} · CAD ${l.caducidad||'—'} · ${l.qty} uds</option>`
+  const bajaOptions=lotesActivos.map(l=>
+    `<option value="${escapeHtml(l.id)}">Lote ${escapeHtml(l.lote)} · ${l.caducidad||'Sin fecha'} · ${l.qty} uds</option>`
   ).join('');
 
   container.innerHTML=`
     <div class="card">
       <h3>${escapeHtml(p.name)}</h3>
-      <div class="code">${escapeHtml(code)}${low?' <span class="ledger-warn bajo">BAJO</span>':''}</div>
-      <div class="qty-now">Stock total: <b>${total}</b> &nbsp;·&nbsp; Mínimo: ${p.minStock}</div>
+      <div class="code">${escapeHtml(code)}</div>
+      <div class="qty-now">Stock total: <b>${total}</b>${low?' &nbsp;<span class="badge rojo">BAJO</span>':''} &nbsp;·&nbsp; Mínimo: ${p.minStock}</div>
 
-      <div class="alta-form">
-        <h4>+ Alta — Nuevo lote</h4>
-        <div class="row-3">
-          <div class="field">
-            <label>N° Lote</label>
-            <input type="text" id="altaLote" placeholder="Lote123" />
-          </div>
-          <div class="field">
-            <label>Caducidad</label>
-            <input type="date" id="altaCad" />
-          </div>
-          <div class="field">
-            <label>Cantidad</label>
-            <input type="number" id="altaQty" min="1" value="1" />
-          </div>
-        </div>
-        <button class="alta" id="altaBtn">Registrar alta</button>
+      <hr class="divider">
+      <div class="section-title verde">+ Alta — Nuevo lote</div>
+      <div class="row-3">
+        <div class="field"><label>N° Lote</label><input type="text" id="altaLote" placeholder="Lote123"/></div>
+        <div class="field"><label>Caducidad</label><input type="date" id="altaCad"/></div>
+        <div class="field"><label>Cantidad</label><input type="number" id="altaQty" min="1" value="1"/></div>
       </div>
+      <button class="alta" id="altaBtn">Registrar alta</button>
 
       ${lotesActivos.length>0?`
-      <div class="baja-section">
-        <h4>− Baja de inventario</h4>
-        <div class="field">
-          <label>Selecciona el lote</label>
-          <select id="bajaSelect">${bajaOptions}</select>
-        </div>
-        <div class="field">
-          <label>Cantidad a dar de baja</label>
-          <input type="number" id="bajaQty" min="1" value="1" />
-        </div>
-        <button class="baja-btn" id="bajaBtn">Registrar baja</button>
-      </div>`:''}
+      <hr class="divider">
+      <div class="section-title rojo">− Baja de inventario</div>
+      <div class="field"><label>Selecciona el lote</label><select id="bajaSelect">${bajaOptions}</select></div>
+      <div class="field"><label>Cantidad a dar de baja</label><input type="number" id="bajaQty" min="1" value="1"/></div>
+      <button class="baja-btn" id="bajaBtn">Registrar baja</button>`:''}
 
-      <div class="lotes-section">
-        <h4>Lotes activos</h4>
-        ${lotesHTML}
-      </div>
+      <hr class="divider">
+      <div class="section-title gris">Lotes registrados</div>
+      ${lotesHTML}
     </div>`;
 
-  document.getElementById('altaBtn').addEventListener('click', ()=>registrarAlta(code));
+  document.getElementById('altaBtn').addEventListener('click',()=>registrarAlta(code));
   if(lotesActivos.length>0){
-    document.getElementById('bajaBtn').addEventListener('click', ()=>registrarBaja(code));
+    document.getElementById('bajaBtn').addEventListener('click',()=>registrarBaja(code));
   }
 }
 
-async function registrarAlta(code){
-  const lote = document.getElementById('altaLote').value.trim();
-  const cad = document.getElementById('altaCad').value;
-  const qty = parseInt(document.getElementById('altaQty').value,10);
-  if(!lote){ showToast('Escribe el número de lote'); return; }
-  if(isNaN(qty)||qty<=0){ showToast('Ingresa una cantidad válida'); return; }
-  await loadInventory();
-  if(!inventory[code]){ showToast('Producto no encontrado'); return; }
-  const id = 'lot_'+Date.now();
-  inventory[code].lotes = inventory[code].lotes || [];
-  inventory[code].lotes.push({ id, lote, caducidad: cad||'', qty });
-  await saveInventory();
+function registrarAlta(code){
+  const lote=document.getElementById('altaLote').value.trim();
+  const cad=document.getElementById('altaCad').value;
+  const qty=parseInt(document.getElementById('altaQty').value,10);
+  if(!lote){showToast('Escribe el número de lote');return;}
+  if(isNaN(qty)||qty<=0){showToast('Ingresa una cantidad válida');return;}
+  loadInventory();
+  if(!inventory[code]){showToast('Producto no encontrado');return;}
+  inventory[code].lotes=inventory[code].lotes||[];
+  inventory[code].lotes.push({id:'lot_'+Date.now(),lote,caducidad:cad||'',qty});
+  saveInventory();
   renderSummary();
   showToast(`Alta: Lote ${lote} · ${qty} unidades`);
   showProductCard(code);
 }
 
-async function registrarBaja(code){
-  const selectEl = document.getElementById('bajaSelect');
-  const loteId = selectEl.value;
-  const qty = parseInt(document.getElementById('bajaQty').value,10);
-  if(isNaN(qty)||qty<=0){ showToast('Ingresa una cantidad válida'); return; }
-  await loadInventory();
-  if(!inventory[code]){ showToast('Producto no encontrado'); return; }
-  const lote = inventory[code].lotes.find(l=>l.id===loteId);
-  if(!lote){ showToast('Lote no encontrado'); return; }
-  if(qty>lote.qty){ showToast(`Solo hay ${lote.qty} unidades en ese lote`); return; }
-  lote.qty -= qty;
-  await saveInventory();
+function registrarBaja(code){
+  const loteId=document.getElementById('bajaSelect').value;
+  const qty=parseInt(document.getElementById('bajaQty').value,10);
+  if(isNaN(qty)||qty<=0){showToast('Ingresa una cantidad válida');return;}
+  loadInventory();
+  if(!inventory[code]){showToast('Producto no encontrado');return;}
+  const lote=inventory[code].lotes.find(l=>l.id===loteId);
+  if(!lote){showToast('Lote no encontrado');return;}
+  if(qty>lote.qty){showToast(`Solo hay ${lote.qty} unidades en ese lote`);return;}
+  lote.qty-=qty;
+  saveInventory();
   renderSummary();
   showToast(`Baja: Lote ${lote.lote} · −${qty} unidades`);
   showProductCard(code);
@@ -427,9 +410,8 @@ function renderInventoryList(){
   const query=(document.getElementById('searchInput').value||'').trim().toLowerCase();
   const codes=Object.keys(inventory).sort((a,b)=>inventory[a].name.localeCompare(inventory[b].name));
   const filtered=codes.filter(c=>!query||inventory[c].name.toLowerCase().includes(query)||c.toLowerCase().includes(query));
-
   if(filtered.length===0){
-    container.innerHTML='<div class="empty">Sin productos todavía.<br>Escanea o agrega uno para empezar.</div>';
+    container.innerHTML='<div class="empty">Sin productos todavía.<br>Ve a Agregar para registrar uno.</div>';
     return;
   }
   container.innerHTML=filtered.map(code=>{
@@ -439,10 +421,10 @@ function renderInventoryList(){
     const lotes=p.lotes||[];
     const proxCad=lotes.some(l=>expStatus(l.caducidad)==='proxima'&&l.qty>0);
     const vencida=lotes.some(l=>expStatus(l.caducidad)==='vencida'&&l.qty>0);
-    let warn='';
-    if(vencida) warn+=' <span class="ledger-warn cad">VENCIDA</span>';
-    if(proxCad) warn+=' <span class="ledger-warn cad">CAD PRÓX</span>';
-    if(low) warn+=' <span class="ledger-warn bajo">BAJO</span>';
+    let badges='';
+    if(vencida) badges+=' <span class="badge rojo">VENCIDA</span>';
+    if(proxCad) badges+=' <span class="badge amber">CAD PRÓX</span>';
+    if(low) badges+=' <span class="badge rojo">BAJO</span>';
     return `<div class="ledger-row" data-code="${escapeHtml(code)}">
       <div class="ledger-main">
         <div class="ledger-name">${escapeHtml(p.name)}</div>
@@ -450,34 +432,62 @@ function renderInventoryList(){
       </div>
       <div class="ledger-right">
         <div class="ledger-qty">${total}</div>
-        <div>${warn}</div>
+        <div class="ledger-badges">${badges}</div>
       </div>
     </div>`;
   }).join('');
-
   container.querySelectorAll('.ledger-row').forEach(row=>{
-    row.addEventListener('click',()=>{ switchToTab('scan'); showProductCard(row.dataset.code); });
+    row.addEventListener('click',()=>{switchToTab('scan');showProductCard(row.dataset.code);});
   });
 }
 document.getElementById('searchInput').addEventListener('input',renderInventoryList);
 
 // ---- ADD PRODUCT ----
-document.getElementById('saveNewBtn').addEventListener('click', async()=>{
+document.getElementById('saveNewBtn').addEventListener('click',()=>{
   const code=document.getElementById('newCode').value.trim();
   const name=document.getElementById('newName').value.trim();
   const minStock=parseInt(document.getElementById('newMin').value,10)||0;
   const msg=document.getElementById('addMsg');
-  if(!code||!name){ msg.textContent='Completa el código y el nombre.'; return; }
-  await loadInventory();
-  if(inventory[code]){ msg.textContent='Ya existe un producto con este código.'; return; }
-  inventory[code]={ name, minStock, lotes:[] };
-  await saveInventory();
+  if(!code||!name){msg.textContent='Completa el código y el nombre.';return;}
+  loadInventory();
+  if(inventory[code]){msg.textContent='Ya existe un producto con este código.';return;}
+  inventory[code]={name,minStock,lotes:[]};
+  saveInventory();
   renderSummary();
-  msg.textContent=`Guardado: ${name}`;
+  msg.textContent=`✓ Guardado: ${name}`;
   showToast('Producto registrado');
   document.getElementById('newCode').value='';
   document.getElementById('newName').value='';
   document.getElementById('newMin').value='0';
+});
+
+// ---- SYNC (export/import) ----
+function renderExport(){
+  const data=localStorage.getItem(LS_KEY)||'{}';
+  document.getElementById('exportText').value=data;
+}
+document.getElementById('copyExportBtn').addEventListener('click',()=>{
+  const txt=document.getElementById('exportText').value;
+  if(!txt){showToast('No hay datos para exportar');return;}
+  navigator.clipboard.writeText(txt).then(()=>showToast('¡Copiado al portapapeles!')).catch(()=>{
+    document.getElementById('exportText').select();
+    showToast('Selecciona el texto y copia manualmente');
+  });
+});
+document.getElementById('importBtn').addEventListener('click',()=>{
+  const txt=document.getElementById('importText').value.trim();
+  if(!txt){showToast('Pega el código primero');return;}
+  try{
+    const parsed=JSON.parse(txt);
+    inventory=parsed;
+    saveInventory();
+    renderSummary();
+    renderInventoryList();
+    showToast('¡Inventario importado correctamente!');
+    document.getElementById('importText').value='';
+  }catch(e){
+    showToast('Código inválido. Verifica que lo copiaste completo.');
+  }
 });
 
 // ---- INIT ----
