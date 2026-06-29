@@ -371,8 +371,8 @@ function showProductCard(code){
       <div class="section-title gris">Lotes registrados</div>
       ${lotesHTML}
     </div>`;
-  document.getElementById('altaBtn').addEventListener('click',()=>registrarAlta(code));
-  if(lotesActivos.length>0) document.getElementById('bajaBtn').addEventListener('click',()=>registrarBaja(code));
+  document.getElementById('altaBtn').addEventListener('click',()=>registrarAlta(sanitized));
+  if(lotesActivos.length>0) document.getElementById('bajaBtn').addEventListener('click',()=>registrarBaja(sanitized));
 }
 
 async function registrarAlta(code){
@@ -381,19 +381,19 @@ async function registrarAlta(code){
   const qty=parseInt(document.getElementById('altaQty').value,10);
   if(!lote){showToast('Escribe el número de lote');return;}
   if(isNaN(qty)||qty<=0){showToast('Ingresa una cantidad válida');return;}
-  if(!inventory[sanitized]){showToast('Producto no encontrado');return;}
-  inventory[sanitized].lotes=inventory[sanitized].lotes||[];
-  inventory[sanitized].lotes.push({id:'lot_'+Date.now(),lote,caducidad:cad||'',qty});
+  if(!inventory[code]){showToast('Producto no encontrado');return;}
+  inventory[code].lotes=inventory[code].lotes||[];
+  inventory[code].lotes.push({id:'lot_'+Date.now(),lote,caducidad:cad||'',qty});
   const ok=await saveInventory();
-  if(ok){showToast(`Alta: Lote ${lote} · ${qty} unidades`);showProductCard(code);}
+  if(ok){showToast(`Alta: Lote ${lote} · ${qty} unidades`);showProductCard(sanitizeKey(code));}
 }
 
 async function registrarBaja(code){
   const loteId=document.getElementById('bajaSelect').value;
   const qty=parseInt(document.getElementById('bajaQty').value,10);
   if(isNaN(qty)||qty<=0){showToast('Ingresa una cantidad válida');return;}
-  if(!inventory[sanitized]){showToast('Producto no encontrado');return;}
-  const lote=inventory[sanitized].lotes.find(l=>l.id===loteId);
+  if(!inventory[code]){showToast('Producto no encontrado');return;}
+  const lote=inventory[code].lotes.find(l=>l.id===loteId);
   if(!lote){showToast('Lote no encontrado');return;}
   if(qty>lote.qty){showToast(`Solo hay ${lote.qty} unidades en ese lote`);return;}
   lote.qty-=qty;
