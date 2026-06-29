@@ -7,10 +7,155 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#EDEEE7;--surface:#FFF;--ink:#1B231F;--muted:#707A72;
+    --teal:#2E6E62;--teal-ink:#1F4D44;--red:#C84B3C;--amber:#B86A1A;
+    --line:#D9DBD2;--radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
+  .app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
+  header{padding:20px 18px 10px;border-bottom:1px solid var(--line);}
+  header .top-row{display:flex;justify-content:space-between;align-items:flex-start;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:0.02em;margin:0;text-transform:uppercase;}
+  .subtitle{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.06em;margin-top:4px;}
+  .conn-status{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--teal);margin-top:6px;}
+  .stamp{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;border:1.5px solid var(--teal);color:var(--teal-ink);border-radius:6px;padding:5px 9px;transform:rotate(-3deg);white-space:nowrap;letter-spacing:0.04em;}
+  .stamp.alert{border-color:var(--red);color:var(--red);}
+  nav.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--surface);}
+  nav.tabs button{flex:1;border:none;background:none;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);padding:13px 0;cursor:pointer;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;}
+  nav.tabs button.active{color:var(--teal-ink);border-bottom-color:var(--teal);}
+  main{flex:1;padding:16px 16px 32px;}
+  section{display:none;}
+  section.active{display:block;}
+  .scan-frame{position:relative;width:100%;aspect-ratio:1/1;background:#0F1411;border-radius:var(--radius);overflow:hidden;}
+  #reader{width:100%;height:100%;}
+  #reader video{width:100% !important;height:100% !important;object-fit:cover;}
+  .corner{position:absolute;width:28px;height:28px;border:3px solid var(--teal);pointer-events:none;z-index:2;}
+  .corner.tl{top:18px;left:18px;border-right:none;border-bottom:none;border-radius:4px 0 0 0;}
+  .corner.tr{top:18px;right:18px;border-left:none;border-bottom:none;border-radius:0 4px 0 0;}
+  .corner.bl{bottom:18px;left:18px;border-right:none;border-top:none;border-radius:0 0 0 4px;}
+  .corner.br{bottom:18px;right:18px;border-left:none;border-top:none;border-radius:0 0 4px 0;}
+  .scan-status{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);text-align:center;margin:10px 0 14px;}
+  .manual-row{display:flex;gap:8px;margin-bottom:16px;}
+  .manual-row input{flex:1;}
+  input[type=text],input[type=number],input[type=date]{font-family:'IBM Plex Mono',monospace;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;}
+  select{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:500;}
+  .field{margin-bottom:12px;}
+  .row-3{display:flex;gap:8px;}
+  .row-3>*{flex:1;}
+  button.primary{background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;padding:11px 14px;cursor:pointer;}
+  button.primary:hover{background:var(--teal-ink);}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px;}
+  .card h3{font-family:'Space Grotesk',sans-serif;margin:0 0 2px;font-size:17px;}
+  .card .code{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:0.05em;margin-bottom:8px;}
+  .qty-now{font-family:'IBM Plex Mono',monospace;font-size:13px;margin:8px 0 12px;}
+  .qty-now b{font-size:20px;}
+  .divider{border:none;border-top:1px dashed var(--line);margin:12px 0;}
+  .section-title{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px;}
+  .section-title.verde{color:var(--teal-ink);}
+  .section-title.rojo{color:var(--red);}
+  .section-title.gris{color:var(--muted);}
+  button.alta{background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 0;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;width:100%;}
+  button.baja-btn{background:var(--red);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 0;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;width:100%;margin-top:8px;}
+  .lote-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px dotted var(--line);}
+  .lote-row:last-child{border-bottom:none;}
+  .lote-info{flex:1;min-width:0;}
+  .lote-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;}
+  .lote-exp{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
+  .lote-exp.proxima{color:var(--amber);font-weight:600;}
+  .lote-exp.vencida{color:var(--red);font-weight:600;}
+  .lote-qty{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;text-align:right;min-width:38px;}
+  .badge{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;border:1.5px solid;border-radius:5px;padding:2px 5px;letter-spacing:0.03em;white-space:nowrap;display:inline-block;}
+  .badge.rojo{border-color:var(--red);color:var(--red);}
+  .badge.amber{border-color:var(--amber);color:var(--amber);}
+  .search-row{margin-bottom:14px;}
+  .ledger-row{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px dashed var(--line);cursor:pointer;}
+  .ledger-row:last-child{border-bottom:none;}
+  .ledger-main{flex:1;min-width:0;}
+  .ledger-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ledger-code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
+  .ledger-right{text-align:right;}
+  .ledger-qty{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;}
+  .ledger-badges{margin-top:3px;}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 10px;font-family:'IBM Plex Mono',monospace;}
+  .debug-box{background:#1B231F;color:#7EE8A2;font-family:'IBM Plex Mono',monospace;font-size:11px;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.7;word-break:break-all;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;padding:10px 18px;border-radius:8px;opacity:0;transition:opacity .2s,transform .2s;z-index:50;pointer-events:none;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="top-row">
+      <div>
+        <h1>Inventario IEM</h1>
+        <div class="subtitle">Control de stock por lote</div>
+        <div class="conn-status" id="connStatus">Conectando…</div>
+      </div>
+      <div id="summaryStamp" class="stamp">0 SKU</div>
+    </div>
+  </header>
 
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="scan">Escanear</button>
+    <button class="tab-btn" data-tab="inventory">Inventario</button>
+    <button class="tab-btn" data-tab="add">Agregar</button>
+  </nav>
+
+  <main>
+    <!-- SCAN -->
+    <section id="tab-scan" class="active">
+      <div class="scan-frame">
+        <div id="reader"></div>
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+      </div>
+      <div class="scan-status" id="scanStatus">Iniciando cámara…</div>
+      <div class="manual-row">
+        <input type="text" id="manualCode" placeholder="O escribe el código aquí" />
+        <button class="primary" id="manualLookupBtn">Buscar</button>
+      </div>
+      <div id="scanResult"></div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section id="tab-inventory">
+      <div class="debug-box" id="debugBox">Cargando diagnóstico…</div>
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Buscar por nombre o código…" />
+      </div>
+      <div id="inventoryList"></div>
+    </section>
+
+    <!-- ADD -->
+    <section id="tab-add">
+      <div class="field">
+        <label>Código de barras</label>
+        <input type="text" id="newCode" placeholder="Escanea o escribe el código" />
+      </div>
+      <div class="field">
+        <label>Nombre del producto</label>
+        <input type="text" id="newName" placeholder="Ej. Gasas estériles 10x10" />
+      </div>
+      <div class="field">
+        <label>Stock mínimo</label>
+        <input type="number" id="newMin" min="0" value="0" />
+      </div>
+      <button class="primary" id="saveNewBtn" style="width:100%;">Guardar producto</button>
+      <div id="addMsg" class="scan-status"></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- CONFIG FIREBASE ----
 const firebaseConfig = {
   apiKey: "AIzaSyB0imQ269-d2ujvAh6_63u0LO3g3pTgZvo",
   authDomain: "inventario-iem.firebaseapp.com",
@@ -21,13 +166,18 @@ const firebaseConfig = {
   appId: "1:468795388652:web:1e12714a6b5aa3ff3febc9"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const inventoryRef = ref(db, 'inventory');
-
+let app, db, inventoryRef;
 let inventory = {};
+let firebaseOK = false;
 let scannerRunning = false;
 let html5QrCode;
+
+// ---- DEBUG ----
+function debug(msg){
+  const box = document.getElementById('debugBox');
+  if(box) box.innerHTML += '<br>' + msg;
+  console.log('[INV]', msg);
+}
 
 // ---- UTILS ----
 function escapeHtml(str){
@@ -41,13 +191,10 @@ function showToast(msg){
 }
 function totalQty(p){return(p.lotes||[]).reduce((s,l)=>s+l.qty,0);}
 function today(){return new Date().toISOString().slice(0,10);}
-function expStatus(fechaStr){
-  if(!fechaStr) return 'ok';
-  const diff=new Date(fechaStr+' 00:00')-new Date(today()+' 00:00');
-  const dias=Math.ceil(diff/(1000*60*60*24));
-  if(dias<0) return 'vencida';
-  if(dias<=30) return 'proxima';
-  return 'ok';
+function expStatus(f){
+  if(!f) return 'ok';
+  const d=Math.ceil((new Date(f+' 00:00')-new Date(today()+' 00:00'))/(864e5));
+  return d<0?'vencida':d<=30?'proxima':'ok';
 }
 function setStatus(msg, ok=true){
   const el=document.getElementById('connStatus');
@@ -55,27 +202,49 @@ function setStatus(msg, ok=true){
   el.style.color=ok?'var(--teal)':'var(--red)';
 }
 
-// ---- FIREBASE ----
-async function saveInventory(){
+// ---- FIREBASE INIT ----
+function initFirebase(){
   try{
-    await set(inventoryRef, inventory);
+    debug('Iniciando Firebase…');
+    app = firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    inventoryRef = db.ref('inventory');
+    debug('Firebase inicializado ✓');
+    startRealtimeSync();
   }catch(e){
-    showToast('Error al guardar en Firebase.');
-    console.error(e);
+    debug('ERROR init: ' + e.message);
+    setStatus('Error de conexión', false);
   }
 }
 
-// Escucha cambios en tiempo real
 function startRealtimeSync(){
-  onValue(inventoryRef, (snapshot)=>{
+  debug('Conectando a Realtime DB…');
+  inventoryRef.on('value', (snapshot)=>{
     inventory = snapshot.val() || {};
+    firebaseOK = true;
+    const count = Object.keys(inventory).length;
+    debug('Datos recibidos ✓ — productos: ' + count);
+    setStatus('Conectado · sincronizado', true);
     renderSummary();
     renderInventoryList();
-    setStatus('Conectado · sincronizado', true);
   }, (error)=>{
-    setStatus('Sin conexión', false);
-    console.error(error);
+    debug('ERROR lectura: ' + error.message + ' | código: ' + error.code);
+    setStatus('Sin conexión — ' + error.code, false);
   });
+}
+
+async function saveInventory(){
+  if(!firebaseOK){ showToast('Sin conexión a Firebase'); return false; }
+  try{
+    debug('Guardando…');
+    await inventoryRef.set(inventory);
+    debug('Guardado ✓');
+    return true;
+  }catch(e){
+    debug('ERROR guardar: ' + e.message);
+    showToast('Error al guardar: ' + e.message);
+    return false;
+  }
 }
 
 // ---- SUMMARY ----
@@ -95,6 +264,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
     if(btn.dataset.tab==='scan'&&!scannerRunning) startScanner();
+    if(btn.dataset.tab==='inventory') renderInventoryList();
   });
 });
 function switchToTab(name){
@@ -149,7 +319,6 @@ function showProductCard(code){
     });
     return;
   }
-
   const total=totalQty(p);
   const low=total<=p.minStock;
   const lotes=p.lotes||[];
@@ -159,9 +328,8 @@ function showProductCard(code){
     if(!b.caducidad)return -1;
     return a.caducidad.localeCompare(b.caducidad);
   });
-
   const lotesHTML=lotes.length===0
-    ?'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--muted)">Sin lotes aún. Da una alta para agregar.</div>'
+    ?'<div style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;color:var(--muted)">Sin lotes aún.</div>'
     :lotes.map(l=>{
         const st=expStatus(l.caducidad);
         const expTxt=l.caducidad?(st==='vencida'?`VENCIDA · ${l.caducidad}`:st==='proxima'?`PRÓX · ${l.caducidad}`:`CAD · ${l.caducidad}`):'Sin fecha';
@@ -173,17 +341,14 @@ function showProductCard(code){
           <div class="lote-qty">${l.qty}</div>
         </div>`;
       }).join('');
-
   const bajaOptions=lotesActivos.map(l=>
     `<option value="${escapeHtml(l.id)}">Lote ${escapeHtml(l.lote)} · ${l.caducidad||'Sin fecha'} · ${l.qty} uds</option>`
   ).join('');
-
   container.innerHTML=`
     <div class="card">
       <h3>${escapeHtml(p.name)}</h3>
       <div class="code">${escapeHtml(code)}</div>
       <div class="qty-now">Stock total: <b>${total}</b>${low?' &nbsp;<span class="badge rojo">BAJO</span>':''} &nbsp;·&nbsp; Mínimo: ${p.minStock}</div>
-
       <hr class="divider">
       <div class="section-title verde">+ Alta — Nuevo lote</div>
       <div class="row-3">
@@ -192,23 +357,18 @@ function showProductCard(code){
         <div class="field"><label>Cantidad</label><input type="number" id="altaQty" min="1" value="1"/></div>
       </div>
       <button class="alta" id="altaBtn">Registrar alta</button>
-
       ${lotesActivos.length>0?`
       <hr class="divider">
       <div class="section-title rojo">− Baja de inventario</div>
       <div class="field"><label>Selecciona el lote</label><select id="bajaSelect">${bajaOptions}</select></div>
       <div class="field"><label>Cantidad a dar de baja</label><input type="number" id="bajaQty" min="1" value="1"/></div>
       <button class="baja-btn" id="bajaBtn">Registrar baja</button>`:''}
-
       <hr class="divider">
       <div class="section-title gris">Lotes registrados</div>
       ${lotesHTML}
     </div>`;
-
   document.getElementById('altaBtn').addEventListener('click',()=>registrarAlta(code));
-  if(lotesActivos.length>0){
-    document.getElementById('bajaBtn').addEventListener('click',()=>registrarBaja(code));
-  }
+  if(lotesActivos.length>0) document.getElementById('bajaBtn').addEventListener('click',()=>registrarBaja(code));
 }
 
 async function registrarAlta(code){
@@ -220,9 +380,8 @@ async function registrarAlta(code){
   if(!inventory[code]){showToast('Producto no encontrado');return;}
   inventory[code].lotes=inventory[code].lotes||[];
   inventory[code].lotes.push({id:'lot_'+Date.now(),lote,caducidad:cad||'',qty});
-  await saveInventory();
-  showToast(`Alta: Lote ${lote} · ${qty} unidades`);
-  showProductCard(code);
+  const ok=await saveInventory();
+  if(ok){showToast(`Alta: Lote ${lote} · ${qty} unidades`);showProductCard(code);}
 }
 
 async function registrarBaja(code){
@@ -234,9 +393,8 @@ async function registrarBaja(code){
   if(!lote){showToast('Lote no encontrado');return;}
   if(qty>lote.qty){showToast(`Solo hay ${lote.qty} unidades en ese lote`);return;}
   lote.qty-=qty;
-  await saveInventory();
-  showToast(`Baja: Lote ${lote.lote} · −${qty} unidades`);
-  showProductCard(code);
+  const ok=await saveInventory();
+  if(ok){showToast(`Baja: Lote ${lote.lote} · −${qty} unidades`);showProductCard(code);}
 }
 
 // ---- INVENTORY LIST ----
@@ -285,164 +443,26 @@ document.getElementById('saveNewBtn').addEventListener('click',async()=>{
   const msg=document.getElementById('addMsg');
   if(!code||!name){msg.textContent='Completa el código y el nombre.';return;}
   if(inventory[code]){msg.textContent='Ya existe un producto con este código.';return;}
+  msg.textContent='Guardando…';
   inventory[code]={name,minStock,lotes:[]};
-  await saveInventory();
-  msg.textContent=`✓ Guardado: ${name}`;
-  showToast('Producto registrado');
-  document.getElementById('newCode').value='';
-  document.getElementById('newName').value='';
-  document.getElementById('newMin').value='0';
+  const ok=await saveInventory();
+  if(ok){
+    msg.textContent=`✓ Guardado: ${name}`;
+    showToast('Producto registrado');
+    document.getElementById('newCode').value='';
+    document.getElementById('newName').value='';
+    document.getElementById('newMin').value='0';
+  }else{
+    delete inventory[code];
+    msg.textContent='Error al guardar. Revisa la conexión.';
+  }
 });
 
 // ---- INIT ----
+document.getElementById('debugBox').innerHTML = 'Estado de conexión:';
 setStatus('Conectando…', true);
-startRealtimeSync();
+initFirebase();
 startScanner();
 </script>
-<style>
-  :root{
-    --bg:#EDEEE7;--surface:#FFF;--ink:#1B231F;--muted:#707A72;
-    --teal:#2E6E62;--teal-ink:#1F4D44;--red:#C84B3C;--amber:#B86A1A;
-    --line:#D9DBD2;--radius:10px;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
-  .app{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;}
-  header{padding:20px 18px 10px;border-bottom:1px solid var(--line);}
-  header .top-row{display:flex;justify-content:space-between;align-items:flex-start;}
-  h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:0.02em;margin:0;text-transform:uppercase;}
-  .subtitle{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.06em;margin-top:4px;}
-  .conn-status{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--teal);margin-top:6px;}
-  .stamp{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;border:1.5px solid var(--teal);color:var(--teal-ink);border-radius:6px;padding:5px 9px;transform:rotate(-3deg);white-space:nowrap;letter-spacing:0.04em;}
-  .stamp.alert{border-color:var(--red);color:var(--red);}
-  nav.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--surface);}
-  nav.tabs button{flex:1;border:none;background:none;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted);padding:13px 0;cursor:pointer;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;}
-  nav.tabs button.active{color:var(--teal-ink);border-bottom-color:var(--teal);}
-  button:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
-  main{flex:1;padding:16px 16px 32px;}
-  section{display:none;}
-  section.active{display:block;}
-  .scan-frame{position:relative;width:100%;aspect-ratio:1/1;background:#0F1411;border-radius:var(--radius);overflow:hidden;}
-  #reader{width:100%;height:100%;}
-  #reader video{width:100% !important;height:100% !important;object-fit:cover;}
-  .corner{position:absolute;width:28px;height:28px;border:3px solid var(--teal);pointer-events:none;z-index:2;}
-  .corner.tl{top:18px;left:18px;border-right:none;border-bottom:none;border-radius:4px 0 0 0;}
-  .corner.tr{top:18px;right:18px;border-left:none;border-bottom:none;border-radius:0 4px 0 0;}
-  .corner.bl{bottom:18px;left:18px;border-right:none;border-top:none;border-radius:0 0 0 4px;}
-  .corner.br{bottom:18px;right:18px;border-left:none;border-top:none;border-radius:0 0 4px 0;}
-  .scan-status{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);text-align:center;margin:10px 0 14px;}
-  .manual-row{display:flex;gap:8px;margin-bottom:16px;}
-  .manual-row input{flex:1;}
-  input[type=text],input[type=number],input[type=date]{font-family:'IBM Plex Mono',monospace;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;}
-  select{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%;}
-  label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:500;}
-  .field{margin-bottom:12px;}
-  .row-2{display:flex;gap:8px;}
-  .row-2>*{flex:1;}
-  .row-3{display:flex;gap:8px;}
-  .row-3>*{flex:1;}
-  button.primary{background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;letter-spacing:0.02em;padding:11px 14px;cursor:pointer;}
-  button.primary:hover{background:var(--teal-ink);}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px;}
-  .card h3{font-family:'Space Grotesk',sans-serif;margin:0 0 2px;font-size:17px;}
-  .card .code{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:0.05em;margin-bottom:8px;}
-  .qty-now{font-family:'IBM Plex Mono',monospace;font-size:13px;margin:8px 0 12px;color:var(--ink);}
-  .qty-now b{font-size:20px;}
-  .divider{border:none;border-top:1px dashed var(--line);margin:12px 0;}
-  .section-title{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px;}
-  .section-title.verde{color:var(--teal-ink);}
-  .section-title.rojo{color:var(--red);}
-  .section-title.gris{color:var(--muted);}
-  button.alta{background:var(--teal);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 0;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;width:100%;}
-  button.baja-btn{background:var(--red);color:#fff;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;padding:11px 0;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;width:100%;margin-top:8px;}
-  .lote-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px dotted var(--line);}
-  .lote-row:last-child{border-bottom:none;}
-  .lote-info{flex:1;min-width:0;}
-  .lote-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;}
-  .lote-exp{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
-  .lote-exp.proxima{color:var(--amber);font-weight:600;}
-  .lote-exp.vencida{color:var(--red);font-weight:600;}
-  .lote-qty{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;text-align:right;min-width:38px;}
-  .badge{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;border:1.5px solid;border-radius:5px;padding:2px 5px;letter-spacing:0.03em;white-space:nowrap;display:inline-block;}
-  .badge.rojo{border-color:var(--red);color:var(--red);}
-  .badge.amber{border-color:var(--amber);color:var(--amber);}
-  .search-row{margin-bottom:14px;}
-  .ledger-row{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px dashed var(--line);cursor:pointer;}
-  .ledger-row:last-child{border-bottom:none;}
-  .ledger-main{flex:1;min-width:0;}
-  .ledger-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .ledger-code{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.04em;margin-top:2px;}
-  .ledger-right{text-align:right;}
-  .ledger-qty{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;}
-  .ledger-badges{margin-top:3px;}
-  .empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 10px;font-family:'IBM Plex Mono',monospace;}
-  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;padding:10px 18px;border-radius:8px;opacity:0;transition:opacity .2s,transform .2s;z-index:50;pointer-events:none;max-width:90%;text-align:center;}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-</style>
-</head>
-<body>
-<div class="app">
-  <header>
-    <div class="top-row">
-      <div>
-        <h1>Inventario IEM</h1>
-        <div class="subtitle">Control de stock por lote</div>
-        <div class="conn-status" id="connStatus">Conectando…</div>
-      </div>
-      <div id="summaryStamp" class="stamp">0 SKU</div>
-    </div>
-  </header>
-
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="scan">Escanear</button>
-    <button class="tab-btn" data-tab="inventory">Inventario</button>
-    <button class="tab-btn" data-tab="add">Agregar</button>
-  </nav>
-
-  <main>
-    <!-- SCAN -->
-    <section id="tab-scan" class="active">
-      <div class="scan-frame">
-        <div id="reader"></div>
-        <div class="corner tl"></div><div class="corner tr"></div>
-        <div class="corner bl"></div><div class="corner br"></div>
-      </div>
-      <div class="scan-status" id="scanStatus">Iniciando cámara…</div>
-      <div class="manual-row">
-        <input type="text" id="manualCode" placeholder="O escribe el código aquí" />
-        <button class="primary" id="manualLookupBtn">Buscar</button>
-      </div>
-      <div id="scanResult"></div>
-    </section>
-
-    <!-- INVENTORY -->
-    <section id="tab-inventory">
-      <div class="search-row">
-        <input type="text" id="searchInput" placeholder="Buscar por nombre o código…" />
-      </div>
-      <div id="inventoryList"></div>
-    </section>
-
-    <!-- ADD -->
-    <section id="tab-add">
-      <div class="field">
-        <label>Código de barras</label>
-        <input type="text" id="newCode" placeholder="Escanea o escribe el código" />
-      </div>
-      <div class="field">
-        <label>Nombre del producto</label>
-        <input type="text" id="newName" placeholder="Ej. Gasas estériles 10x10" />
-      </div>
-      <div class="field">
-        <label>Stock mínimo</label>
-        <input type="number" id="newMin" min="0" value="0" />
-      </div>
-      <button class="primary" id="saveNewBtn" style="width:100%;">Guardar producto</button>
-      <div id="addMsg" class="scan-status"></div>
-    </section>
-  </main>
-</div>
-<div class="toast" id="toast"></div>
 </body>
 </html>
