@@ -180,6 +180,9 @@ function debug(msg){
 }
 
 // ---- UTILS ----
+function sanitizeKey(str){
+  return String(str).replace(/[.#$\/\[\]]/g,'_');
+}
 function escapeHtml(str){
   return String(str).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
@@ -305,7 +308,8 @@ document.getElementById('manualLookupBtn').addEventListener('click',()=>{
 
 function showProductCard(code){
   const container=document.getElementById('scanResult');
-  const p=inventory[code];
+  const sanitized=sanitizeKey(code);
+  const p=inventory[sanitized];
   if(!p){
     container.innerHTML=`
       <div class="card">
@@ -377,9 +381,9 @@ async function registrarAlta(code){
   const qty=parseInt(document.getElementById('altaQty').value,10);
   if(!lote){showToast('Escribe el número de lote');return;}
   if(isNaN(qty)||qty<=0){showToast('Ingresa una cantidad válida');return;}
-  if(!inventory[code]){showToast('Producto no encontrado');return;}
-  inventory[code].lotes=inventory[code].lotes||[];
-  inventory[code].lotes.push({id:'lot_'+Date.now(),lote,caducidad:cad||'',qty});
+  if(!inventory[sanitized]){showToast('Producto no encontrado');return;}
+  inventory[sanitized].lotes=inventory[sanitized].lotes||[];
+  inventory[sanitized].lotes.push({id:'lot_'+Date.now(),lote,caducidad:cad||'',qty});
   const ok=await saveInventory();
   if(ok){showToast(`Alta: Lote ${lote} · ${qty} unidades`);showProductCard(code);}
 }
@@ -388,8 +392,8 @@ async function registrarBaja(code){
   const loteId=document.getElementById('bajaSelect').value;
   const qty=parseInt(document.getElementById('bajaQty').value,10);
   if(isNaN(qty)||qty<=0){showToast('Ingresa una cantidad válida');return;}
-  if(!inventory[code]){showToast('Producto no encontrado');return;}
-  const lote=inventory[code].lotes.find(l=>l.id===loteId);
+  if(!inventory[sanitized]){showToast('Producto no encontrado');return;}
+  const lote=inventory[sanitized].lotes.find(l=>l.id===loteId);
   if(!lote){showToast('Lote no encontrado');return;}
   if(qty>lote.qty){showToast(`Solo hay ${lote.qty} unidades en ese lote`);return;}
   lote.qty-=qty;
@@ -408,7 +412,8 @@ function renderInventoryList(){
     return;
   }
   container.innerHTML=filtered.map(code=>{
-    const p=inventory[code];
+    const sanitized=sanitizeKey(code);
+  const p=inventory[sanitized];
     const total=totalQty(p);
     const low=total<=p.minStock;
     const lotes=p.lotes||[];
@@ -442,9 +447,10 @@ document.getElementById('saveNewBtn').addEventListener('click',async()=>{
   const minStock=parseInt(document.getElementById('newMin').value,10)||0;
   const msg=document.getElementById('addMsg');
   if(!code||!name){msg.textContent='Completa el código y el nombre.';return;}
-  if(inventory[code]){msg.textContent='Ya existe un producto con este código.';return;}
+  const skey=sanitizeKey(code);
+  if(inventory[skey]){msg.textContent='Ya existe un producto con este código.';return;}
   msg.textContent='Guardando…';
-  inventory[code]={name,minStock,lotes:[]};
+  inventory[skey]={name,minStock,lotes:[]};
   const ok=await saveInventory();
   if(ok){
     msg.textContent=`✓ Guardado: ${name}`;
@@ -453,7 +459,7 @@ document.getElementById('saveNewBtn').addEventListener('click',async()=>{
     document.getElementById('newName').value='';
     document.getElementById('newMin').value='0';
   }else{
-    delete inventory[code];
+    delete inventory[skey];
     msg.textContent='Error al guardar. Revisa la conexión.';
   }
 });
