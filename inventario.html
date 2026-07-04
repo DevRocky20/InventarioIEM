@@ -84,7 +84,6 @@
   .ledger-qty{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;}
   .ledger-badges{margin-top:3px;}
   .empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 10px;font-family:'IBM Plex Mono',monospace;}
-  .debug-box{background:#1B231F;color:#7EE8A2;font-family:'IBM Plex Mono',monospace;font-size:11px;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.7;word-break:break-all;}
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;padding:10px 18px;border-radius:8px;opacity:0;transition:opacity .2s,transform .2s;z-index:50;pointer-events:none;max-width:90%;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
@@ -126,7 +125,6 @@
 
     <!-- INVENTORY -->
     <section id="tab-inventory">
-      <div class="debug-box" id="debugBox">Cargando diagnóstico…</div>
       <div class="search-row">
         <input type="text" id="searchInput" placeholder="Buscar por nombre o código…" />
       </div>
@@ -172,13 +170,6 @@ let firebaseOK = false;
 let scannerRunning = false;
 let html5QrCode;
 
-// ---- DEBUG ----
-function debug(msg){
-  const box = document.getElementById('debugBox');
-  if(box) box.innerHTML += '<br>' + msg;
-  console.log('[INV]', msg);
-}
-
 // ---- UTILS ----
 function sanitizeKey(str){
   return String(str).replace(/[.#$\/\[\]]/g,'_');
@@ -208,44 +199,35 @@ function setStatus(msg, ok=true){
 // ---- FIREBASE INIT ----
 function initFirebase(){
   try{
-    debug('Iniciando Firebase…');
-    app = firebase.initializeApp(firebaseConfig);
+      app = firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     inventoryRef = db.ref('inventory');
-    debug('Firebase inicializado ✓');
-    startRealtimeSync();
+      startRealtimeSync();
   }catch(e){
-    debug('ERROR init: ' + e.message);
-    setStatus('Error de conexión', false);
+      setStatus('Error de conexión', false);
   }
 }
 
 function startRealtimeSync(){
-  debug('Conectando a Realtime DB…');
   inventoryRef.on('value', (snapshot)=>{
     inventory = snapshot.val() || {};
     firebaseOK = true;
     const count = Object.keys(inventory).length;
-    debug('Datos recibidos ✓ — productos: ' + count);
-    setStatus('Conectado · sincronizado', true);
+      setStatus('Conectado · sincronizado', true);
     renderSummary();
     renderInventoryList();
   }, (error)=>{
-    debug('ERROR lectura: ' + error.message + ' | código: ' + error.code);
-    setStatus('Sin conexión — ' + error.code, false);
+      setStatus('Sin conexión — ' + error.code, false);
   });
 }
 
 async function saveInventory(){
   if(!firebaseOK){ showToast('Sin conexión a Firebase'); return false; }
   try{
-    debug('Guardando…');
-    await inventoryRef.set(inventory);
-    debug('Guardado ✓');
-    return true;
+      await inventoryRef.set(inventory);
+      return true;
   }catch(e){
-    debug('ERROR guardar: ' + e.message);
-    showToast('Error al guardar: ' + e.message);
+      showToast('Error al guardar: ' + e.message);
     return false;
   }
 }
@@ -465,7 +447,6 @@ document.getElementById('saveNewBtn').addEventListener('click',async()=>{
 });
 
 // ---- INIT ----
-document.getElementById('debugBox').innerHTML = 'Estado de conexión:';
 setStatus('Conectando…', true);
 initFirebase();
 startScanner();
