@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
   --bg:#EDEEE7;--surface:#FFF;--ink:#1B231F;--muted:#707A72;
@@ -246,7 +247,8 @@ const firebaseConfig = {
 
 const ALMACENES = ['IEM_General','TAVI','CARDIO','CRM'];
 const ALMACEN_LABELS = {IEM_General:'IEM General',TAVI:'TAVI',CARDIO:'CARDIO',CRM:'CRM'};
-const TRANSFER_PIN = '1234'; // Cambia este PIN
+const TRANSFER_PIN = '1234'; // PIN transferencias
+const AJUSTE_PIN = '4675'; // PIN ajustes de inventario
 const SALE_ALMACENES = ['TAVI','CARDIO','CRM'];
 
 let db, inventoryRef, historialRef;
@@ -320,13 +322,11 @@ async function addHistorial(alm, entry){
 // LAYOUT
 // ============================================================
 function getSections(){
-  const base = ['escanear','inventario','agregar','historial'];
-  if(SALE_ALMACENES.includes(currentAlmacen)) return [...base,'reportes'];
-  return [...base,'reportes'];
+  return ['escanear','inventario','agregar','historial','reportes','etiquetas'];
 }
 const SECTION_LABELS = {
   escanear:'Escanear',inventario:'Inventario',agregar:'Agregar',
-  historial:'Historial',reportes:'Reportes'
+  historial:'Historial',reportes:'Reportes',etiquetas:'Etiquetas QR'
 };
 
 function renderTabs(){
@@ -351,8 +351,11 @@ function renderCurrentView(){
   if(currentSection==='escanear') renderScanView(main);
   else if(currentSection==='inventario') renderInventoryView(main);
   else if(currentSection==='agregar') renderAddView(main);
+  else if(currentSection==='qr') renderQRView(main);
+  else if(currentSection==='ajustes') renderAjustesView(main);
   else if(currentSection==='historial') renderHistorialView(main);
   else if(currentSection==='reportes') renderReportesView(main);
+  else if(currentSection==='etiquetas') renderEtiquetasView(main);
 }
 
 // ============================================================
@@ -383,18 +386,29 @@ function startScanner(hintId){
   const statusEl=document.getElementById(hintId);
   if(typeof Html5Qrcode==='undefined'){if(statusEl)statusEl.textContent='Escáner no disponible.';return;}
   html5QrCode=new Html5Qrcode("reader");
-  const config={fps:10,qrbox:{width:220,height:140},formatsToSupport:[
-    Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,
-    Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.QR_CODE
-  ]};
+  const config={
+    fps:15,
+    qrbox:{width:250,height:250},
+    aspectRatio:1.0,
+    formatsToSupport:[
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.ITF
+    ],
+    experimentalFeatures:{useBarCodeDetectorIfSupported:true}
+  };
   Html5Qrcode.getCameras().then(cameras=>{
     if(!cameras||!cameras.length){if(statusEl)statusEl.textContent='No se detectó cámara.';return;}
     const camId=cameras.find(c=>/back|rear|trasera/i.test(c.label))?.id||cameras[cameras.length-1].id;
-    html5QrCode.start(camId,config,(decoded)=>{
+    // En iOS usar facingMode en lugar de deviceId
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const cameraConfig = isIOS ? {facingMode:{exact:"environment"}} : camId;
+    html5QrCode.start(cameraConfig,config,(decoded)=>{
       if(navigator.vibrate)navigator.vibrate(80);
-      currentScanCode=skey(decoded.trim());
+      const cleanDecoded=decoded.trim().replace(/^]C[0-9]/,'').replace(/^]d[0-9]/,'');
+      currentScanCode=skey(cleanDecoded);
       currentScanAlmacen=currentAlmacen;
       if(statusEl)statusEl.textContent='Código detectado ✓';
       renderProductCard();
@@ -895,6 +909,489 @@ function exportVentasExcel(ventas){
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Ventas');
   XLSX.writeFile(wb,`ventas_IEM_${today()}.xlsx`);
+}
+
+// ============================================================
+// ETIQUETAS QR
+// ============================================================
+function renderEtiquetasView(main){
+  const inv = almData(currentAlmacen);
+  const codes = Object.keys(inv).sort((a,b)=>inv[a].name.localeCompare(inv[b].name));
+
+  main.innerHTML=`
+    <div class="card" style="margin-top:0">
+      <div class="card-title">Generar código QR</div>
+      <div class="card-sub">Selecciona un producto o escribe un código personalizado</div>
+      <div class="divider"></div>
+      <div class="field">
+        <label>Producto del almacén (opcional)</label>
+        <select id="qrProductSel">
+          <option value="">— Seleccionar producto —</option>
+          ${codes.map(c=>`<option value="${esc(c)}">${esc(inv[c].name)} · ${esc(c)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>O escribe el código manualmente</label>
+        <input type="text" id="qrCustomCode" placeholder="Ej. TAVI-23MM"/>
+      </div>
+      <div class="field">
+        <label>Etiqueta (nombre que aparece bajo el QR)</label>
+        <input type="text" id="qrLabel" placeholder="Nombre del producto"/>
+      </div>
+      <button class="btn btn-teal btn-full" id="generateQrBtn">Generar QR</button>
+    </div>
+
+    <div id="qrResult" style="display:none">
+      <div class="card" style="text-align:center">
+        <div class="sec-label gris" style="margin-bottom:8px" id="qrLabelDisplay"></div>
+        <div class="sec-label" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:12px" id="qrCodeDisplay"></div>
+        <div id="qrCanvas" style="display:inline-block;padding:12px;background:#fff;border-radius:8px;border:1px solid var(--line)"></div>
+        <div style="margin-top:14px;display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-full" id="printQrBtn">Imprimir etiqueta</button>
+          <button class="btn btn-teal btn-full" id="newQrBtn">Generar otro</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">Todos los productos</div>
+      <div class="card-sub">Toca un producto para generar su QR</div>
+      <div class="divider"></div>
+      ${codes.length===0
+        ? '<div class="empty">Sin productos en este almacén.</div>'
+        : codes.map(code=>`
+          <div class="ledger-row" data-code="${esc(code)}" data-name="${esc(inv[code].name)}">
+            <div class="ledger-main">
+              <div class="ledger-name">${esc(inv[code].name)}</div>
+              <div class="ledger-code">${esc(code)}</div>
+            </div>
+            <div style="font-size:20px;color:var(--muted)">⊞</div>
+          </div>`).join('')
+      }
+    </div>`;
+
+  // Sincronizar select con input manual
+  document.getElementById('qrProductSel').addEventListener('change', e=>{
+    const code = e.target.value;
+    if(code){
+      document.getElementById('qrCustomCode').value = code;
+      document.getElementById('qrLabel').value = inv[code]?.name || '';
+    }
+  });
+
+  document.getElementById('generateQrBtn').addEventListener('click', ()=>{
+    const code = document.getElementById('qrCustomCode').value.trim() || document.getElementById('qrProductSel').value;
+    const label = document.getElementById('qrLabel').value.trim() || code;
+    if(!code){showToast('Escribe o selecciona un código');return;}
+    generateQR(code, label);
+  });
+
+  // Click en fila de producto
+  main.querySelectorAll('.ledger-row[data-code]').forEach(row=>{
+    row.addEventListener('click',()=>{
+      const code = row.dataset.code;
+      const name = row.dataset.name;
+      document.getElementById('qrCustomCode').value = code;
+      document.getElementById('qrLabel').value = name;
+      document.getElementById('qrProductSel').value = code;
+      generateQR(code, name);
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+}
+
+function generateQR(code, label){
+  const result = document.getElementById('qrResult');
+  const canvas = document.getElementById('qrCanvas');
+  canvas.innerHTML = '';
+  result.style.display = 'block';
+  document.getElementById('qrLabelDisplay').textContent = label;
+  document.getElementById('qrCodeDisplay').textContent = code;
+
+  new QRCode(canvas, {
+    text: code,
+    width: 200,
+    height: 200,
+    colorDark: '#1B231F',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  document.getElementById('printQrBtn').onclick = ()=> printQR(code, label);
+  document.getElementById('newQrBtn').onclick = ()=>{
+    result.style.display='none';
+    document.getElementById('qrCustomCode').value='';
+    document.getElementById('qrLabel').value='';
+    document.getElementById('qrProductSel').value='';
+  };
+}
+
+function printQR(code, label){
+  const canvas = document.querySelector('#qrCanvas canvas') || document.querySelector('#qrCanvas img');
+  if(!canvas){showToast('Genera el QR primero');return;}
+  const src = canvas.tagName==='CANVAS' ? canvas.toDataURL() : canvas.src;
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Etiqueta QR</title>
+    <style>
+      body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:'Helvetica',sans-serif;background:#fff;}
+      .label-wrap{text-align:center;padding:20px;border:2px solid #1B231F;border-radius:10px;display:inline-block;}
+      img{width:180px;height:180px;display:block;margin:0 auto 10px;}
+      .prod-name{font-size:14px;font-weight:700;color:#1B231F;margin-bottom:4px;}
+      .prod-code{font-size:11px;color:#707A72;font-family:monospace;letter-spacing:0.05em;}
+      .org{font-size:10px;color:#aaa;margin-top:8px;text-transform:uppercase;letter-spacing:0.08em;}
+    </style>
+  </head><body>
+    <div class="label-wrap">
+      <img src="${src}"/>
+      <div class="prod-name">${label}</div>
+      <div class="prod-code">${code}</div>
+      <div class="org">Sistema Inventarios IEM</div>
+    </div>
+    <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+
+
+// ============================================================
+// AJUSTES VIEW
+// ============================================================
+function renderAjustesView(main){
+  main.innerHTML=`
+    <div class="card" style="margin-top:0">
+      <div class="card-title">Ajuste de inventario</div>
+      <div class="card-sub">${ALMACEN_LABELS[currentAlmacen]} · Solo personal autorizado</div>
+      <div class="divider"></div>
+      <div class="field">
+        <label>PIN de autorización</label>
+        <input type="password" id="ajustePin" placeholder="••••" style="letter-spacing:0.2em;"/>
+      </div>
+      <button class="btn btn-amber btn-full" id="ajustePinBtn">Verificar PIN</button>
+    </div>
+    <div id="ajusteContent" style="display:none;">
+      <div class="card" style="margin-top:12px;">
+        <div class="sec-label gris">Buscar producto</div>
+        <div class="manual-row" style="margin-bottom:0">
+          <input type="text" id="ajusteSearch" placeholder="Escribe nombre o código…"/>
+          <button class="btn btn-teal" id="ajusteSearchBtn">Buscar</button>
+        </div>
+      </div>
+      <div id="ajusteProductList" style="margin-top:12px;"></div>
+      <div id="ajusteForm" style="display:none;"></div>
+    </div>`;
+
+  document.getElementById('ajustePinBtn').addEventListener('click',()=>{
+    const pin=document.getElementById('ajustePin').value;
+    if(pin!==AJUSTE_PIN){showToast('PIN incorrecto');return;}
+    document.getElementById('ajusteContent').style.display='block';
+    document.getElementById('ajustePin').closest('.card').style.display='none';
+    renderAjusteProductList('');
+  });
+
+  document.getElementById('ajustePin')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter') document.getElementById('ajustePinBtn').click();
+  });
+}
+
+function renderAjusteProductList(query){
+  const inv=almData(currentAlmacen);
+  const codes=Object.keys(inv).sort((a,b)=>inv[a].name.localeCompare(inv[b].name));
+  const filtered=codes.filter(c=>!query||inv[c].name.toLowerCase().includes(query.toLowerCase())||c.toLowerCase().includes(query.toLowerCase()));
+  const container=document.getElementById('ajusteProductList');
+  if(!container) return;
+
+  if(!filtered.length){
+    container.innerHTML='<div class="empty">Sin productos encontrados.</div>';
+    return;
+  }
+  container.innerHTML=`<div class="card" style="padding:8px 14px;">
+    ${filtered.map(code=>{
+      const p=inv[code];
+      const total=totalQty(p);
+      return `<div class="ledger-row" data-code="${esc(code)}">
+        <div class="ledger-main">
+          <div class="ledger-name">${esc(p.name)}</div>
+          <div class="ledger-code">${esc(code)}</div>
+        </div>
+        <div class="ledger-right">
+          <div class="ledger-qty">${total}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  container.querySelectorAll('.ledger-row').forEach(row=>{
+    row.addEventListener('click',()=>renderAjusteForm(row.dataset.code));
+  });
+
+  // Search button
+  document.getElementById('ajusteSearchBtn')?.addEventListener('click',()=>{
+    const q=document.getElementById('ajusteSearch').value.trim();
+    renderAjusteProductList(q);
+  });
+  document.getElementById('ajusteSearch')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter') document.getElementById('ajusteSearchBtn').click();
+  });
+}
+
+function renderAjusteForm(code){
+  const inv=almData(currentAlmacen);
+  const p=inv[code];
+  if(!p) return;
+  const lotes=p.lotes||[];
+  const form=document.getElementById('ajusteForm');
+  form.style.display='block';
+  document.getElementById('ajusteProductList').style.display='none';
+
+  const lotesOpts=lotes.map((l,i)=>`<option value="${i}">Lote ${esc(l.lote)} · CAD ${l.caducidad||'—'} · ${l.qty} uds</option>`).join('');
+
+  form.innerHTML=`
+    <div class="card" style="margin-top:12px;">
+      <div class="card-title">${esc(p.name)}</div>
+      <div class="card-sub">${esc(code)} · ${ALMACEN_LABELS[currentAlmacen]}</div>
+      <div class="divider"></div>
+
+      <div class="sec-label verde" style="margin-bottom:10px;">Editar nombre del producto</div>
+      <div class="field"><label>Nombre</label><input type="text" id="ajNombre" value="${esc(p.name)}"/></div>
+      <div class="field"><label>Stock mínimo</label><input type="number" id="ajMinStock" value="${p.minStock||0}" min="0"/></div>
+      <button class="btn btn-teal btn-full" id="ajGuardarProducto">Guardar cambios del producto</button>
+
+      <div class="divider"></div>
+      <div class="sec-label azul" style="margin-bottom:10px;">Editar un lote</div>
+      ${lotes.length===0?'<div class="empty" style="padding:8px 0">Sin lotes registrados.</div>':`
+      <div class="field"><label>Selecciona el lote</label>
+        <select id="ajLoteSelect">${lotesOpts}</select>
+      </div>
+      <div class="row-3">
+        <div class="field"><label>N° Lote</label><input type="text" id="ajLoteNum"/></div>
+        <div class="field"><label>Caducidad</label><input type="date" id="ajLoteCad"/></div>
+        <div class="field"><label>Cantidad</label><input type="number" id="ajLoteQty" min="0"/></div>
+      </div>
+      <div class="row-2">
+        <button class="btn btn-blue btn-full" id="ajGuardarLote">Guardar lote</button>
+        <button class="btn btn-red btn-full" id="ajEliminarLote">Eliminar lote</button>
+      </div>`}
+
+      <div class="divider"></div>
+      <div class="sec-label rojo" style="margin-bottom:10px;">Eliminar producto completo</div>
+      <button class="btn btn-red btn-full" id="ajEliminarProducto">Eliminar producto del almacén</button>
+
+      <div class="divider"></div>
+      <button class="btn btn-ghost btn-full" id="ajVolver">← Volver a la lista</button>
+    </div>`;
+
+  // Rellenar lote seleccionado
+  function fillLoteFields(){
+    const idx=parseInt(document.getElementById('ajLoteSelect')?.value||'0');
+    const l=lotes[idx];
+    if(!l) return;
+    document.getElementById('ajLoteNum').value=l.lote||'';
+    document.getElementById('ajLoteCad').value=l.caducidad||'';
+    document.getElementById('ajLoteQty').value=l.qty||0;
+  }
+  if(lotes.length>0){
+    fillLoteFields();
+    document.getElementById('ajLoteSelect').addEventListener('change',fillLoteFields);
+  }
+
+  // Guardar nombre/minStock
+  document.getElementById('ajGuardarProducto').addEventListener('click',async()=>{
+    const nombre=document.getElementById('ajNombre').value.trim();
+    const minStock=parseInt(document.getElementById('ajMinStock').value,10)||0;
+    if(!nombre){showToast('El nombre no puede estar vacío');return;}
+    if(!data[currentAlmacen]) data[currentAlmacen]={};
+    data[currentAlmacen][code].name=nombre;
+    data[currentAlmacen][code].minStock=minStock;
+    await saveAlmacen(currentAlmacen);
+    await addHistorial(currentAlmacen,{tipo:'ajuste',fecha:nowTs(),producto:nombre,codigo:code,detalle:`Nombre/mínimo editado`});
+    showToast('Producto actualizado');
+    renderAjusteForm(code);
+  });
+
+  // Guardar lote editado
+  document.getElementById('ajGuardarLote')?.addEventListener('click',async()=>{
+    const idx=parseInt(document.getElementById('ajLoteSelect').value);
+    const loteNum=document.getElementById('ajLoteNum').value.trim();
+    const cad=document.getElementById('ajLoteCad').value;
+    const qty=parseInt(document.getElementById('ajLoteQty').value,10);
+    if(!loteNum){showToast('El número de lote no puede estar vacío');return;}
+    if(isNaN(qty)||qty<0){showToast('Cantidad inválida');return;}
+    const oldLote={...data[currentAlmacen][code].lotes[idx]};
+    data[currentAlmacen][code].lotes[idx].lote=loteNum;
+    data[currentAlmacen][code].lotes[idx].caducidad=cad||'';
+    data[currentAlmacen][code].lotes[idx].qty=qty;
+    await saveAlmacen(currentAlmacen);
+    await addHistorial(currentAlmacen,{tipo:'ajuste',fecha:nowTs(),producto:p.name,codigo:code,
+      detalle:`Lote ${oldLote.lote} → ${loteNum} · Qty ${oldLote.qty} → ${qty} · CAD ${oldLote.caducidad||'—'} → ${cad||'—'}`});
+    showToast('Lote actualizado');
+    renderAjusteForm(code);
+  });
+
+  // Eliminar lote
+  document.getElementById('ajEliminarLote')?.addEventListener('click',async()=>{
+    const idx=parseInt(document.getElementById('ajLoteSelect').value);
+    const lote=data[currentAlmacen][code].lotes[idx];
+    if(!confirm(`¿Eliminar lote ${lote.lote} (${lote.qty} uds)?`)) return;
+    data[currentAlmacen][code].lotes.splice(idx,1);
+    await saveAlmacen(currentAlmacen);
+    await addHistorial(currentAlmacen,{tipo:'ajuste',fecha:nowTs(),producto:p.name,codigo:code,
+      detalle:`Lote ${lote.lote} eliminado (${lote.qty} uds)`});
+    showToast('Lote eliminado');
+    renderAjusteForm(code);
+  });
+
+  // Eliminar producto completo
+  document.getElementById('ajEliminarProducto').addEventListener('click',async()=>{
+    if(!confirm(`¿Eliminar el producto "${p.name}" y todos sus lotes de ${ALMACEN_LABELS[currentAlmacen]}?`)) return;
+    const nombre=data[currentAlmacen][code].name;
+    delete data[currentAlmacen][code];
+    await saveAlmacen(currentAlmacen);
+    await addHistorial(currentAlmacen,{tipo:'ajuste',fecha:nowTs(),producto:nombre,codigo:code,
+      detalle:'Producto eliminado del almacén'});
+    showToast('Producto eliminado');
+    form.style.display='none';
+    document.getElementById('ajusteProductList').style.display='block';
+    renderAjusteProductList('');
+  });
+
+  // Volver
+  document.getElementById('ajVolver').addEventListener('click',()=>{
+    form.style.display='none';
+    document.getElementById('ajusteProductList').style.display='block';
+    renderAjusteProductList('');
+  });
+}
+
+
+// ============================================================
+// QR VIEW
+// ============================================================
+function renderQRView(main){
+  const inv=almData(currentAlmacen);
+  const codes=Object.keys(inv).sort((a,b)=>inv[a].name.localeCompare(inv[b].name));
+
+  main.innerHTML=`
+    <div class="card" style="margin-top:0">
+      <div class="card-title">Generar código QR</div>
+      <div class="card-sub">${ALMACEN_LABELS[currentAlmacen]}</div>
+      <div class="divider"></div>
+      <div class="field">
+        <label>Selecciona un producto</label>
+        <select id="qrProductSel">
+          <option value="">— Elige un producto —</option>
+          ${codes.map(c=>`<option value="${esc(c)}">${esc(inv[c]?.name||c)} · ${esc(c)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Código personalizado</label><input type="text" id="qrCustomCode" placeholder="Ej. TAVI-23MM"/></div>
+        <div class="field"><label>Etiqueta (nombre)</label><input type="text" id="qrLabel" placeholder="Nombre visible"/></div>
+      </div>
+      <button class="btn btn-teal btn-full" id="generateQrBtn">Generar QR</button>
+      <div id="qrResult" style="display:none;margin-top:16px;text-align:center;">
+        <div style="font-family:Space Grotesk,sans-serif;font-weight:700;font-size:15px;" id="qrLabelDisplay"></div>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);margin-bottom:12px;" id="qrCodeDisplay"></div>
+        <div id="qrCanvas" style="margin:0 auto 12px;width:fit-content;"></div>
+        <p style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--muted);line-height:1.6;margin:0 0 12px;">
+          Toma una captura de pantalla para guardar e imprimir.<br>
+          Al escanearlo en la app, el producto se identifica automáticamente.
+        </p>
+        <div class="row-2">
+          <button class="btn btn-ghost btn-full" id="newQrBtn">Generar otro</button>
+          <button class="btn btn-teal btn-full" id="printQrBtn">Imprimir etiqueta</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px;">
+      <div class="sec-label gris">Productos en ${ALMACEN_LABELS[currentAlmacen]}</div>
+      <div id="qrProductList">
+        ${codes.length===0
+          ? '<div class="empty">Sin productos en este almacén.</div>'
+          : codes.map(code=>`
+            <div class="ledger-row" data-code="${esc(code)}" data-name="${esc(inv[code]?.name||'')}">
+              <div class="ledger-main">
+                <div class="ledger-name">${esc(inv[code]?.name||code)}</div>
+                <div class="ledger-code">${esc(code)}</div>
+              </div>
+              <div style="font-size:22px;color:var(--muted);">⊞</div>
+            </div>`).join('')
+        }
+      </div>
+    </div>`;
+
+  document.getElementById('qrProductSel').addEventListener('change',e=>{
+    const code=e.target.value;
+    if(code){
+      document.getElementById('qrCustomCode').value=code;
+      document.getElementById('qrLabel').value=inv[code]?.name||'';
+    }
+  });
+
+  document.getElementById('generateQrBtn').addEventListener('click',()=>{
+    const code=document.getElementById('qrCustomCode').value.trim()||document.getElementById('qrProductSel').value;
+    const label=document.getElementById('qrLabel').value.trim()||code;
+    if(!code){showToast('Escribe o selecciona un código');return;}
+    generateQR(code,label);
+  });
+
+  main.querySelectorAll('#qrProductList .ledger-row').forEach(row=>{
+    row.addEventListener('click',()=>{
+      const code=row.dataset.code;
+      const name=row.dataset.name;
+      document.getElementById('qrCustomCode').value=code;
+      document.getElementById('qrLabel').value=name;
+      document.getElementById('qrProductSel').value=code;
+      generateQR(code,name);
+      main.scrollTo({top:0,behavior:'smooth'});
+    });
+  });
+}
+
+function generateQR(code,label){
+  const result=document.getElementById('qrResult');
+  const canvas=document.getElementById('qrCanvas');
+  canvas.innerHTML='';
+  result.style.display='block';
+  document.getElementById('qrLabelDisplay').textContent=label;
+  document.getElementById('qrCodeDisplay').textContent=code;
+  new QRCode(canvas,{
+    text:code,width:220,height:220,
+    colorDark:'#1B231F',colorLight:'#FFFFFF',
+    correctLevel:QRCode.CorrectLevel.H
+  });
+  document.getElementById('printQrBtn').onclick=()=>printQR(code,label);
+  document.getElementById('newQrBtn').onclick=()=>{
+    result.style.display='none';
+    document.getElementById('qrCustomCode').value='';
+    document.getElementById('qrLabel').value='';
+    document.getElementById('qrProductSel').value='';
+  };
+}
+
+function printQR(code,label){
+  const canvas=document.querySelector('#qrCanvas canvas')||document.querySelector('#qrCanvas img');
+  if(!canvas){showToast('Genera el QR primero');return;}
+  const src=canvas.tagName==='CANVAS'?canvas.toDataURL():canvas.src;
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Etiqueta QR</title>
+    <style>
+      body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Helvetica,sans-serif;background:#fff;}
+      .wrap{text-align:center;padding:20px;border:2px solid #1B231F;border-radius:10px;}
+      img{width:180px;height:180px;display:block;margin:0 auto 10px;}
+      .name{font-size:14px;font-weight:700;color:#1B231F;margin-bottom:4px;}
+      .code{font-size:11px;color:#707A72;font-family:monospace;letter-spacing:0.05em;}
+      .org{font-size:10px;color:#aaa;margin-top:8px;text-transform:uppercase;letter-spacing:0.08em;}
+    </style>
+  </head><body>
+    <div class="wrap">
+      <img src="${src}"/>
+      <div class="name">${label}</div>
+      <div class="code">${code}</div>
+      <div class="org">Sistema Inventarios IEM</div>
+    </div>
+    <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
 }
 
 // ============================================================
