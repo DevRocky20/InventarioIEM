@@ -567,11 +567,11 @@ function renderQRView(m){
       <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:12px;" id="qrCodeShow"></div>
       <div id="qrCanvas" style="margin:0 auto 12px;width:fit-content;"></div>
       <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);line-height:1.6;margin:0 0 12px;">
-        Toma una captura de pantalla o usa Imprimir etiqueta.<br>Al escanear el QR, el producto se identifica automáticamente.
+        Descarga la etiqueta como imagen PNG y ábrela para imprimir o compartir por WhatsApp.<br>Al escanear el QR, el producto se identifica automáticamente.
       </p>
       <div class="row-2">
         <button class="btn btn-ghost btn-full" id="qrOtroBtn">Generar otro</button>
-        <button class="btn btn-teal btn-full" id="qrPrintBtn">Imprimir etiqueta</button>
+        <button class="btn btn-teal btn-full" id="qrPrintBtn">Descargar etiqueta</button>
       </div>
     </div>
   </div>
@@ -621,24 +621,81 @@ function genQR(code,lbl){
   };
 }
 function printQR(code,lbl){
-  const el=document.querySelector('#qrCanvas canvas')||document.querySelector('#qrCanvas img');
-  if(!el){showToast('Genera el QR primero');return;}
-  const src=el.tagName==='CANVAS'?el.toDataURL():el.src;
-  const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>Etiqueta QR</title>
-  <style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Helvetica,sans-serif;background:#fff;}
-  .wrap{text-align:center;padding:20px;border:2px solid #1B231F;border-radius:10px;}
-  img{width:180px;height:180px;display:block;margin:0 auto 10px;}
-  .name{font-size:14px;font-weight:700;color:#1B231F;margin-bottom:4px;}
-  .code{font-size:11px;color:#707A72;font-family:monospace;letter-spacing:0.05em;}
-  .org{font-size:10px;color:#aaa;margin-top:8px;text-transform:uppercase;letter-spacing:0.08em;}
-  </style></head><body><div class="wrap">
-  <img src="${src}"/>
-  <div class="name">${lbl}</div>
-  <div class="code">${code}</div>
-  <div class="org">Sistema Inventarios IEM</div>
-  </div><script>window.onload=()=>window.print();<\/script></body></html>`);
-  w.document.close();
+  // Obtener el canvas del QR
+  const qrEl=document.querySelector('#qrCanvas canvas')||document.querySelector('#qrCanvas img');
+  if(!qrEl){showToast('Genera el QR primero');return;}
+  const qrSrc=qrEl.tagName==='CANVAS'?qrEl.toDataURL('image/png'):qrEl.src;
+
+  // Crear canvas completo con etiqueta
+  const canvas=document.createElement('canvas');
+  const scale=3; // Alta resolución para impresión
+  const W=260*scale, H=320*scale;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  // Fondo blanco
+  ctx.fillStyle='#FFFFFF';
+  ctx.fillRect(0,0,W,H);
+
+  // Borde
+  ctx.strokeStyle='#1B231F';
+  ctx.lineWidth=3*scale;
+  ctx.beginPath();
+  ctx.roundRect(8*scale,8*scale,W-16*scale,H-16*scale,10*scale);
+  ctx.stroke();
+
+  // Logo/titulo
+  ctx.fillStyle='#1B231F';
+  ctx.font=`bold ${9*scale}px Helvetica`;
+  ctx.textAlign='center';
+  ctx.fillText('SISTEMA INVENTARIOS IEM',W/2,28*scale);
+
+  // Línea separadora
+  ctx.strokeStyle='#D9DBD2';
+  ctx.lineWidth=1*scale;
+  ctx.beginPath();
+  ctx.moveTo(20*scale,36*scale);
+  ctx.lineTo(W-20*scale,36*scale);
+  ctx.stroke();
+
+  // Cargar y dibujar QR
+  const img=new Image();
+  img.onload=()=>{
+    const qrSize=160*scale;
+    const qrX=(W-qrSize)/2;
+    const qrY=44*scale;
+    ctx.drawImage(img,qrX,qrY,qrSize,qrSize);
+
+    // Nombre del producto
+    ctx.fillStyle='#1B231F';
+    ctx.font=`bold ${11*scale}px Helvetica`;
+    ctx.textAlign='center';
+    // Wrap texto largo
+    const words=lbl.split(' ');
+    let line='', lines=[], maxW=W-40*scale;
+    for(const word of words){
+      const test=line?line+' '+word:word;
+      if(ctx.measureText(test).width>maxW){lines.push(line);line=word;}
+      else line=test;
+    }
+    if(line) lines.push(line);
+    lines=lines.slice(0,2); // máximo 2 líneas
+    const nameY=qrY+qrSize+20*scale;
+    lines.forEach((l,i)=>ctx.fillText(l,W/2,nameY+i*14*scale));
+
+    // Código
+    ctx.fillStyle='#707A72';
+    ctx.font=`${8*scale}px 'Courier New',monospace`;
+    ctx.fillText(code,W/2,nameY+lines.length*14*scale+10*scale);
+
+    // Descargar como PNG
+    const a=document.createElement('a');
+    a.download=`etiqueta_${code}.png`;
+    a.href=canvas.toDataURL('image/png');
+    a.click();
+    showToast('Etiqueta descargada ✓ Ábrela para imprimir');
+  };
+  img.src=qrSrc;
 }
 
 // ── AJUSTES VIEW ─────────────────────────────────────────────
