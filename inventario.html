@@ -300,14 +300,22 @@ function startScanner(hintId){
       if(navigator.vibrate)navigator.vibrate(80);
       const clean=decoded.trim().replace(/^\]C[0-9]/,'').replace(/^\]d[0-9]/,'');
       scanCode=skey(clean); scanAlm=curAlm;
+      // Pausar escáner para evitar lecturas múltiples
+      qrScanner.pause();
       if(hint)hint.textContent='Código detectado ✓';
       renderProductCard();
+      showReactivarBtn();
     },()=>{}).then(()=>{scannerRunning=true;if(hint)hint.textContent='Apunta la cámara al código QR';})
     .catch(()=>{if(hint)hint.textContent='No se pudo iniciar la cámara. Usa el campo manual.';});
   }).catch(()=>{if(hint)hint.textContent='Acceso a cámara no disponible.';});
 }
 
 // ── SCAN VIEW ────────────────────────────────────────────────
+function showReactivarBtn(){
+  const btn=document.getElementById('reactivarBtn');
+  if(btn) btn.style.display='block';
+}
+
 function renderScanView(m){
   m.innerHTML=`
     <div class="scan-frame"><div id="reader"></div>
@@ -319,14 +327,31 @@ function renderScanView(m){
       <input type="text" id="manualCode" placeholder="O escribe el código aquí"/>
       <button class="btn btn-teal" id="manualBtn">Buscar</button>
     </div>
+    <button class="btn btn-ghost btn-full" id="reactivarBtn" style="margin-bottom:12px;display:none;">📷 Escanear otro producto</button>
     <div id="productCard"></div>`;
   startScanner('scanHint');
   document.getElementById('manualBtn').addEventListener('click',()=>{
     const v=document.getElementById('manualCode').value.trim();
     if(!v)return;
     scanCode=skey(v);scanAlm=curAlm;renderProductCard();
+    showReactivarBtn();
   });
-  if(scanCode&&scanAlm===curAlm) renderProductCard();
+  document.getElementById('reactivarBtn').addEventListener('click',()=>{
+    scanCode=null;
+    document.getElementById('productCard').innerHTML='';
+    document.getElementById('manualCode').value='';
+    document.getElementById('reactivarBtn').style.display='none';
+    document.getElementById('scanHint').textContent='Apunta la cámara al código QR';
+    // Reactivar cámara
+    if(qrScanner&&scannerRunning){
+      qrScanner.resume();
+    } else {
+      stopScanner();
+      scannerRunning=false;
+      startScanner('scanHint');
+    }
+  });
+  if(scanCode&&scanAlm===curAlm){ renderProductCard(); showReactivarBtn(); }
 }
 
 function renderProductCard(){
